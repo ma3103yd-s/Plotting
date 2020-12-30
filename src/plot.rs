@@ -1,3 +1,7 @@
+use crate::window::Plotting;
+use crate::window::Message;
+
+static PLOTS: Vec<Line2D> = Vec::new();
 
 #[derive(Debug)]
 pub struct Color([f64;4]);
@@ -17,15 +21,24 @@ pub struct Axes2D {
 }
 
 impl Axes2D {
+    pub fn new() -> Self {
+        Self {
+            xlim: [0.0, 1.0],
+            ylim: [0.0, 1.0],
+            scale: 0.1,
+        }
+    }
+
     pub fn get_xaxes(&self) -> [f64;2] {
         self.xlim
     }
     pub fn get_yaxes(&self) -> [f64;2] {
         self.ylim
     }
-    pub fn axes(&mut self, xlim: &[f64;2], ylim: &[f64;2]) {
+    pub fn axes(mut self, xlim: &[f64;2], ylim: &[f64;2]) -> Self {
         self.xlim = xlim.to_owned();
         self.ylim = ylim.to_owned();
+        self
     }
     pub fn scale(&mut self, scale: f64) {
         self.scale=1.0
@@ -37,7 +50,6 @@ pub struct Plot2D {
     xlabel: String,
     ylabel: String,
     axes: Grid,
-    lines: Vec<Line2D>,
     
 }
 
@@ -57,9 +69,18 @@ pub struct Grid {
 }
 
 impl Plot2D {
-    pub fn Plot<T: Into<f64>>(x: &[T], y: &[T]) -> Self {
-        unimplemented!()
-        
+    pub fn plot<T: Into<f64> + Copy>(x: &[T], y: &[T]) -> Self {
+        let mut default = Self::new();
+        let x_min: f64 = (x[0]).into();
+        let x_max: f64 = (*(x.last().unwrap())).into();
+        let y_min: f64 = y[0].into();
+        let y_max: f64 = (*(y.last().unwrap())).into();
+        let g = Grid::new(Axes2D::new().axes(&[x_min, x_max], &[y_min, y_max]), "none");
+        let line = Line2D::new(x, y);
+        default.axes = g;
+        PLOTS.push(line);
+        default
+
     }
     pub fn new() -> Self {
         Self {
@@ -67,9 +88,15 @@ impl Plot2D {
             xlabel:  String::from("x"),
             ylabel: String::from("y"),
             axes: Grid::default(),
-            lines: Vec::new(),
 
         }
+    }
+
+    pub fn show() {
+        for plot in PLOTS {
+            Plotting::
+        }
+        
     }
 
 //    pub fn get_axes(xlim: &[f64;2], ylim: &[f64;2], grid: &str) {
@@ -79,9 +106,8 @@ impl Plot2D {
         &self.axes
     }
 
-    pub fn get_mut_lines(&mut self) -> &mut Vec<Line2D> {
-        &mut self.lines
-        
+    pub fn add_line(line: Line2D) {
+        PLOTS.push(line);
     }
 }
 
@@ -94,6 +120,12 @@ impl Grid {
     }
     pub fn get_axes(&self) -> &Axes2D {
         &self.axes
+    }
+    pub fn new(axes: Axes2D, grid: &str) -> Self {
+        Self {
+            axes,
+            grid: grid.to_owned(),
+        }
     }
 }
 
@@ -110,9 +142,6 @@ impl Line2D {
         }
     }
 
-    fn draw() {
-        unimplemented!()        
-    }
 
 }
 
