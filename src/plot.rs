@@ -1,6 +1,7 @@
 use crate::window::Plotting;
 use crate::window::Message;
 
+
 static PLOTS: Vec<Line2D> = Vec::new();
 
 #[derive(Debug)]
@@ -50,6 +51,7 @@ pub struct Plot2D {
     xlabel: String,
     ylabel: String,
     axes: Grid,
+    lines: Vec<Line2D>,
     
 }
 
@@ -78,7 +80,7 @@ impl Plot2D {
         let g = Grid::new(Axes2D::new().axes(&[x_min, x_max], &[y_min, y_max]), "none");
         let line = Line2D::new(x, y);
         default.axes = g;
-        PLOTS.push(line);
+        default.lines.push(line);
         default
 
     }
@@ -88,14 +90,12 @@ impl Plot2D {
             xlabel:  String::from("x"),
             ylabel: String::from("y"),
             axes: Grid::default(),
+            lines: Vec::new(),
 
         }
     }
 
-    pub fn show() {
-        for plot in PLOTS {
-            Plotting::
-        }
+    pub fn show(&mut self) {
         
     }
 
@@ -106,9 +106,10 @@ impl Plot2D {
         &self.axes
     }
 
-    pub fn add_line(line: Line2D) {
-        PLOTS.push(line);
+    pub fn get_lines(&self) -> &Vec<Line2D> {
+        &self.lines
     }
+
 }
 
 impl Grid {
@@ -141,6 +142,14 @@ impl Line2D {
             
         }
     }
+    pub fn color(&self) -> &Color {
+        &self.color
+        
+    }
+
+    pub fn get_data(&self) -> &Vec<(f64,f64)> {
+       &self.data 
+    }
 
 
 }
@@ -151,12 +160,10 @@ pub struct Linspace {
 
 impl Linspace {
 
-    pub fn linspace(start: f64, end: f64, steps: usize) -> Self {
+    pub fn linspace(start: f64, end: f64, steps: usize) -> Vec<f64> {
         let step_size = (end-start).abs()/(steps as f64);
-        let mut data = (0..steps).map(|x| start+(x as f64)*step_size).collect();
-        Self {
-            data
-        }
+        let mut data = (0..steps+1).map(|x| start+(x as f64)*step_size).collect();
+        data
     }
 
 }
