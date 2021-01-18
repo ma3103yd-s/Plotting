@@ -8,8 +8,8 @@ use iced::Application;
 
 pub fn main() -> iced::Result {
 
-    let x: Vec<f64> = Linspace::linspace(0.0, 10.0, 100);
-    let y: Vec<f64> = x.iter().map(|&x| x).collect();
+    let x: Vec<f64> = Linspace::linspace(-10.0, 10.0, 100);
+    let y: Vec<f64> = x.iter().map(|&x| x*x).collect();
     let plot = Plot2D::plot(&x, &y);
     
 

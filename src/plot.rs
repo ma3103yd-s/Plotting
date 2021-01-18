@@ -26,7 +26,7 @@ impl Axes2D {
         Self {
             xlim: [0.0, 1.0],
             ylim: [0.0, 1.0],
-            scale: 0.1,
+            scale: 1.0,
         }
     }
 
@@ -43,6 +43,10 @@ impl Axes2D {
     }
     pub fn scale(&mut self, scale: f64) {
         self.scale=1.0
+    }
+    pub fn get_scale(&self) -> f64 {
+        self.scale
+        
     }
 }
 
@@ -115,7 +119,7 @@ impl Plot2D {
 impl Grid {
     pub fn default() -> Self {
         Self {
-            axes: Axes2D{xlim: [0.0, 1.0], ylim: [0.0, 1.0], scale: 0.1},
+            axes: Axes2D{xlim: [0.0, 1.0], ylim: [0.0, 1.0], scale: 1.0},
             grid: String::from("none"),
         }
     }

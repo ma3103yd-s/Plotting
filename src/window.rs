@@ -88,29 +88,49 @@ impl<Message> canvas::Program<Message> for State {
 
         let xlims = self.plot.get_axes().get_axes().get_xaxes();
         let ylims = self.plot.get_axes().get_axes().get_yaxes();
-        println!("xlims are {:?}", xlims);
+
+        let edge: usize = 30;
+
 
         let background = self.plot_background.draw(bounds.size(), |frame| {
 
-            let x_grid = Linspace::linspace(xlims[0], xlims[1], (frame.width()-9.0) as usize);
-            let y_grid = Linspace::linspace(ylims[0], ylims[1], (frame.height()-9.0) as usize);
+            let x_grid = Linspace::linspace(xlims[0], xlims[1], frame.width() as usize-2*edge);
+            let y_grid = Linspace::linspace(ylims[0], ylims[1], frame.height() as usize-2*edge);
             let x_grid_window: Vec<(f64, f32)> = x_grid.iter().cloned().
-                zip((10..(frame.width() as usize - 9)).map(|x| x as f32)).collect();
-            let x_origin = x_grid_window.iter().
-                filter(|(a, _)| a.min((xlims[0].abs()+xlims[1].abs())/frame.width() as f64)==*a).
-                map(|(_, b)| *b).next().unwrap();
+                zip((edge..(frame.width() as usize - edge+1)).map(|x| x as f32)).collect();
+//            let x_origin = x_grid_window.iter().
+//                filter(|(a, _)| a.min((xlims[0].abs()+xlims[1].abs())/frame.width() as f64)==*a).
+//                map(|(_, b)| *b).next().unwrap();
+
             let y_grid_window: Vec<(f64, f32)> = y_grid.iter().cloned().
-                zip((10..(frame.height() as usize-9)).rev().map(|x| x as f32)).collect();
-            let y_origin = y_grid_window.iter().
-                filter(|(a, _)| a.min((ylims[0].abs()+ylims[1].abs())/frame.height() as f64)==*a).
-                map(|(_, b)| *b).next().unwrap();
+                zip((edge..(frame.height() as usize-edge+1)).rev().map(|x| x as f32)).collect();
+//            let y_origin = y_grid_window.iter().
+//                filter(|(a, _)| a.min((ylims[0].abs()+ylims[1].abs())/frame.height() as f64)==*a).
+//                map(|(_, b)| *b).next().unwrap();
+
+
+            let y_origin = y_grid_window.iter().min_by(|(a,_), (b,_)| {
+                if a.abs()<b.abs() {
+                    if(a==b) { return Ordering::Equal }
+                    return Ordering::Less
+                }
+                Ordering::Greater
+            }).unwrap().1;
+            let x_origin = x_grid_window.iter().min_by(|(a,_), (b,_)| {
+                 if a.abs()<b.abs() {
+                    if(a==b) { return Ordering::Equal }
+                    return Ordering::Less
+                }
+                Ordering::Greater               
+            }).unwrap().1;
 
             let origin = Point::new(x_origin, y_origin);
+            println!("origin is {:?}", origin);
 
 
             let mut x_axes = path::Builder::new();
             let center = frame.center();
-            let right_center = Point::new(frame.width()-10.0, y_origin);
+            let right_center = Point::new(frame.width()-edge as f32, y_origin);
             x_axes.move_to(origin);
             x_axes.line_to(right_center);
             x_axes.line_to(right_center+Vector::from([-1.0, -1.0]));
@@ -119,7 +139,7 @@ impl<Message> canvas::Program<Message> for State {
             let p = x_axes.build();
 
             let mut y_axes = path::Builder::new();
-            let upper_center = Point::new(x_origin, 10.0);
+            let upper_center = Point::new(x_origin, edge as f32);
             y_axes.move_to(origin);
             y_axes.line_to(upper_center);
             y_axes.line_to(upper_center+Vector::from([-1.0, 1.0]));
@@ -137,26 +157,55 @@ impl<Message> canvas::Program<Message> for State {
             let mut x_grid = path::Builder::new();
             let mut y_grid = path::Builder::new();
             let grid = self.plot.get_axes();
-            let x_points = 
+            let nbr_of_x_points = (xlims[1]-xlims[0])/grid.get_axes().get_scale();
+            let nbr_of_y_points = (xlims[1]-xlims[0])/grid.get_axes().get_scale();
+            let x_step = (frame.width()-(2*edge) as f32) as f64/nbr_of_x_points;
+            let y_step = (frame.height()-(2*edge) as f32) as f64/nbr_of_y_points;
 
-            match grid.grid {
+            match grid.grid.as_str() {
                 "none" => {
-                    
+                    let mut x_pos: f32 = x_origin;
+                    let mut y_pos: f32 = y_origin;
+                    while(x_pos < frame.width()-(edge+1) as f32) {
+                        x_grid.move_to(Point::new(x_pos,y_origin-3.0));
+                        x_grid.line_to(Point::new(x_pos, y_origin+3.0));
+                        x_pos+=x_step as f32;
+                    }
+
+                    while(y_pos > edge as f32) {
+                        y_grid.move_to(Point::new(x_origin-3.0, y_pos));
+                        y_grid.line_to(Point::new(x_origin+3.0, y_pos));
+                        y_pos-=y_step as f32;
+                    }
+
+
+
                 },
                 "both" => {},
-            }
+                _ => panic!("Not a valid string")
+            };
+            let x_grid = x_grid.build();
+            let y_grid = y_grid.build();
+            frame.stroke(&p, Stroke{color: Color::BLACK, width: 2.0, line_cap: LineCap::Butt,
+                line_join: LineJoin::Miter});
+            frame.stroke(&x_grid, Stroke{color: Color::BLACK, width: 1.0, line_cap: LineCap::Butt,
+                line_join: LineJoin::Miter});
+            frame.stroke(&y_grid, Stroke{color: Color::BLACK, width: 1.0, line_cap: LineCap::Butt,
+                line_join: LineJoin::Miter});
 
 
 
         });
         
         let _lines = self.lines.draw(bounds.size(), |frame| {
-            let x_grid = Linspace::linspace(xlims[0], xlims[1], ((frame.width()-10.0)*4.0) as usize);
-            let y_grid = Linspace::linspace(ylims[0], ylims[1], ((frame.height()-10.0)*4.0) as usize);
+            let x_grid = Linspace::linspace(xlims[0], xlims[1], ((frame.width()-2.0*edge as f32)*4.0) as usize);
+            let y_grid = Linspace::linspace(ylims[0], ylims[1], ((frame.height()-2.0*edge as f32)*4.0) as usize);
+
             let x_grid_window: Vec<(f64, f32)> = x_grid.iter().cloned().
-                zip((40..((frame.width()*4.0) as usize - 36)).map(|x| x as f32*0.25)).collect();
+                zip((4*edge..((frame.width()*4.0) as usize - 4*edge+1)).map(|x| x as f32*0.25)).collect();
             let y_grid_window: Vec<(f64, f32)> = y_grid.iter().cloned().
-                zip((40..((frame.height()*4.0) as usize-36)).rev().map(|x| x as f32*0.25)).collect();
+                zip((4*edge..((frame.height()*4.0) as usize-4*edge+1)).rev().map(|x| x as f32*0.25)).collect();
+            println!("y_grid_window is {:?}", y_grid_window);
             for line in self.plot.get_lines() {
                  let mut line_draw  = path::Builder::new();
                  line_draw.move_to(Point::new(x_grid_window[0].1, y_grid_window[0].1));
