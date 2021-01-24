@@ -5,7 +5,7 @@ use iced::{
 };
 */
 use iced::{
-    canvas::{self, Cursor, path, Path, Stroke, LineJoin, LineCap},
+    canvas::{self, Cursor, path, Path, Stroke, Fill, LineJoin, LineCap},
     executor, window, Application, Canvas, Color, Command, Element,
     Length, Point, Rectangle, Settings, Size, Subscription, Vector,
 };
@@ -181,7 +181,21 @@ impl<Message> canvas::Program<Message> for State {
 
 
                 },
-                "both" => {},
+                "both" => {
+                    let mut x_pos: f32 = x_grid_window[0].1;
+                    let mut y_pos: f32 = y_grid_window[0].1;
+                    while(x_pos < frame.width()+x_step as f32-edge as f32) {
+                        x_grid.move_to(Point::new(x_pos,edge as f32));
+                        x_grid.line_to(Point::new(x_pos, frame.height()-edge as f32));
+                        x_pos+=x_step as f32;
+                    }
+
+                    while(y_pos > edge as f32-x_step as f32) {
+                        y_grid.move_to(Point::new(edge as f32, y_pos));
+                        y_grid.line_to(Point::new(frame.width()-edge as f32, y_pos));
+                        y_pos-=y_step as f32;
+                    }                   
+                },
                 _ => panic!("Not a valid string")
             };
             let x_grid = x_grid.build();
@@ -205,10 +219,16 @@ impl<Message> canvas::Program<Message> for State {
                 zip((4*edge..((frame.width()*4.0) as usize - 4*edge+1)).map(|x| x as f32*0.25)).collect();
             let y_grid_window: Vec<(f64, f32)> = y_grid.iter().cloned().
                 zip((4*edge..((frame.height()*4.0) as usize-4*edge+1)).rev().map(|x| x as f32*0.25)).collect();
-            println!("y_grid_window is {:?}", y_grid_window);
             for line in self.plot.get_lines() {
                  let mut line_draw  = path::Builder::new();
-                 line_draw.move_to(Point::new(x_grid_window[0].1, y_grid_window[0].1));
+                 let min_y_vals: Vec<f64> = y_grid.iter().map(|x| (x-line.data[0].1).abs()).collect();
+                 let min_x_vals: Vec<f64> = x_grid.iter().map(|x| (x-line.data[0].0).abs()).collect();
+                 let (_, ind_y) = min(&min_y_vals);
+                 let (_, ind_x) = min(&min_x_vals);
+                 let start_y = y_grid_window[ind_y].1;
+                 let start_x = x_grid_window[ind_x].1;
+//                 let start_y = y_grid_window.iter().find(|(a,_)| *a==line.data[0].1).unwrap().1;
+                 line_draw.move_to(Point::new(start_x, start_y));
                  for (x,y) in line.get_data().iter() {
 //                 line.get_data().iter().map(|(x,y)| {
                     let x_coord = x_grid_window.iter().min_by(|&&x_1, &&x_2| {
@@ -237,12 +257,28 @@ impl<Message> canvas::Program<Message> for State {
                     }).unwrap().1;
 
                     let new_point = Point::new(x_coord, y_coord);
-                    line_draw.line_to(new_point);
+                    match &line.linestyle[0..] {
+                        "-" => line_draw.line_to(new_point),
+                        "." => {
+                           line_draw.circle(new_point, 2f32); 
+                        },
+                        _ => panic!("Not a valid linestyle"),
+                    }
+
                 }
                 let p = line_draw.build();
+                let line_color = line.get_color();
+                let color = iced::Color::new(line_color.0, line_color.1, line_color.2, line_color.3);
                 //frame.fill(&p, Color::BLACK);
-                frame.stroke(&p, Stroke{color: Color::BLACK, width: 2.0, line_cap: LineCap::Butt
-                    , line_join: LineJoin::Miter});
+                match &line.linestyle[0..] {
+                    "-" => frame.stroke(&p, Stroke{color, width: 2.0, line_cap: LineCap::Butt,
+                    line_join: LineJoin::Miter}),
+                    "." => {
+                       frame.fill(&p, color); 
+                    },
+                    _ => panic!("Not a valid linestyle"),
+                }
+
             }
             
         });

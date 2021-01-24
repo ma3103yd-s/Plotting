@@ -1,19 +1,35 @@
 use crate::window::Plotting;
 use crate::window::Message;
+use iced::Settings;
+use iced::window;
+use iced::Application;
 
 
-static PLOTS: Vec<Line2D> = Vec::new();
 
 #[derive(Debug)]
-pub struct Color([f64;4]);
+pub struct Color(pub f32, pub f32, pub f32, pub f32);
 
 
 impl Color {
 
-    pub const BLACK: Color = Color{0: [0.0,0.0,0.0,1.0]};
+    pub const BLACK: Color = Color{0: 0.0, 1: 0.0, 2: 0.0, 3: 1.0};
+    pub const RED: Color = Color(1.0, 0.0, 0.0, 1.0);
 
 }
 
+pub fn min<T: Into<f64>+Copy>(vals: &[T]) -> (f64, usize) {
+    let mut min = std::f64::MAX;
+    let mut pos: usize = 0;
+    for &val in vals.iter() {
+        let val:f64 = val.into();
+        if val < min {
+            min = val;
+            pos+=1;
+        }
+
+    }
+    return (min, pos)
+}
 
 pub struct Axes2D {
     xlim: [f64;2],
@@ -62,8 +78,8 @@ pub struct Plot2D {
 #[derive(Debug)]
 pub struct Line2D {
     color: Color,
-    data: Vec<(f64, f64)>,
-    linestyle: String,
+    pub data: Vec<(f64, f64)>,
+    pub linestyle: String,
     legend: Option<String>,
 }
 
@@ -75,11 +91,13 @@ pub struct Grid {
 }
 
 impl Plot2D {
+
+
     pub fn plot<T: Into<f64> + Copy>(x: &[T], y: &[T]) -> Self {
         let mut default = Self::new();
         let x_min: f64 = (x[0]).into();
         let x_max: f64 = (*(x.last().unwrap())).into();
-        let y_min: f64 = y[0].into();
+        let (y_min,_): (f64, usize) = min(y);
         let y_max: f64 = (*(y.last().unwrap())).into();
         let g = Grid::new(Axes2D::new().axes(&[x_min, x_max], &[y_min, y_max]), "none");
         let line = Line2D::new(x, y);
@@ -88,6 +106,7 @@ impl Plot2D {
         default
 
     }
+
     pub fn new() -> Self {
         Self {
             title: String::from("Plot"),
@@ -99,8 +118,19 @@ impl Plot2D {
         }
     }
 
-    pub fn show(&mut self) {
-        
+    pub fn show(self) -> iced::Result {
+        Plotting::run(Settings{
+            window: window::Settings::default(),
+            flags: self,
+            default_font: None,
+            default_text_size: 20,
+            antialiasing: true,
+        })
+    }
+
+    pub fn grid(mut self, grid: &str) -> Self {
+        self.axes.grid = String::from(grid);
+        self
     }
 
 //    pub fn get_axes(xlim: &[f64;2], ylim: &[f64;2], grid: &str) {
@@ -113,6 +143,11 @@ impl Plot2D {
     pub fn get_lines(&self) -> &Vec<Line2D> {
         &self.lines
     }
+
+    pub fn add_line(&mut self, line: Line2D) {
+        self.lines.push(line);
+    }
+
 
 }
 
@@ -146,13 +181,24 @@ impl Line2D {
             
         }
     }
-    pub fn color(&self) -> &Color {
+    
+    pub fn color(mut self, color: Color) -> Self {
+       self.color = color;
+       self
+    }
+
+    pub fn get_color(&self) -> &Color {
         &self.color
         
     }
 
     pub fn get_data(&self) -> &Vec<(f64,f64)> {
        &self.data 
+    }
+
+    pub fn linestyle(mut self, linestyle: &str) -> Self {
+        self.linestyle = linestyle.to_owned();
+        self
     }
 
 
