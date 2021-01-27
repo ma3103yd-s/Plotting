@@ -5,9 +5,10 @@ use iced::{
 };
 */
 use iced::{
-    canvas::{self, Cursor, path, Path, Stroke, Fill, LineJoin, LineCap},
+    canvas::{self, Cursor, path, Path, Text, Stroke, Fill, LineJoin, LineCap},
     executor, window, Application, Canvas, Color, Command, Element,
-    Length, Point, Rectangle, Settings, Size, Subscription, Vector,
+    Length, Point, Rectangle, Settings, Size, Subscription, Vector, HorizontalAlignment,
+    VerticalAlignment,
 };
 use std::cmp::Ordering;
 
@@ -124,23 +125,23 @@ impl<Message> canvas::Program<Message> for State {
                 Ordering::Greater               
             }).unwrap().1;
 
-            let origin = Point::new(x_origin, y_origin);
-            println!("origin is {:?}", origin);
 
-
+            // Draw the x axes
             let mut x_axes = path::Builder::new();
             let center = frame.center();
             let right_center = Point::new(frame.width()-edge as f32, y_origin);
-            x_axes.move_to(origin);
+            let left_center = Point::new(edge as f32, y_origin);
+            x_axes.move_to(left_center);
             x_axes.line_to(right_center);
             x_axes.line_to(right_center+Vector::from([-1.0, -1.0]));
             x_axes.move_to(right_center);
             x_axes.line_to(right_center+Vector::from([-1.0, 1.0]));
             let p = x_axes.build();
-
+            // Draw the y axes
             let mut y_axes = path::Builder::new();
             let upper_center = Point::new(x_origin, edge as f32);
-            y_axes.move_to(origin);
+            let lower_center = Point::new(x_origin, frame.height()-edge as f32);
+            y_axes.move_to(lower_center);
             y_axes.line_to(upper_center);
             y_axes.line_to(upper_center+Vector::from([-1.0, 1.0]));
             y_axes.move_to(upper_center);
@@ -153,29 +154,65 @@ impl<Message> canvas::Program<Message> for State {
 
             frame.stroke(&p2, Stroke{color: Color::BLACK, width: 2.0, line_cap: LineCap::Butt
                 , line_join: LineJoin::Miter});
-
+            
+            // Build the grid depending on plot.
             let mut x_grid = path::Builder::new();
             let mut y_grid = path::Builder::new();
             let grid = self.plot.get_axes();
             let nbr_of_x_points = (xlims[1]-xlims[0])/grid.get_axes().get_scale();
-            let nbr_of_y_points = (xlims[1]-xlims[0])/grid.get_axes().get_scale();
+            let nbr_of_y_points = nbr_of_x_points;
             let x_step = (frame.width()-(2*edge) as f32) as f64/nbr_of_x_points;
             let y_step = (frame.height()-(2*edge) as f32) as f64/nbr_of_y_points;
 
+            // Initialize variables for the axes texts
+            let mut x_text_val = xlims[0];
+            let mut y_text_val = ylims[0];
+            let mut x_text: Text = Text::from(format!("{:.0}", x_text_val));
+            let mut y_text: Text = Text::from("");
+            // Draw the text for the first x value
+            x_text.position = Point::new(x_grid_window[0].1, y_origin+5.0);
+            x_text.horizontal_alignment = HorizontalAlignment::Center;
+            frame.fill_text(x_text);
+            // Draw the grid depending on what type of grid the plot uses.
             match grid.grid.as_str() {
                 "none" => {
-                    let mut x_pos: f32 = x_origin;
-                    let mut y_pos: f32 = y_origin;
+                    let mut x_pos: f32 = x_grid_window[0].1;
+                    let mut y_pos: f32 = y_grid_window[0].1;
                     while(x_pos < frame.width()-(edge+1) as f32) {
                         x_grid.move_to(Point::new(x_pos,y_origin-3.0));
                         x_grid.line_to(Point::new(x_pos, y_origin+3.0));
                         x_pos+=x_step as f32;
+                        x_text_val += grid.get_axes().get_scale();
+                        x_text = Text::from(format!("{:.0}", x_text_val));
+                        x_text.position = Point::new(x_pos, y_origin+5.0);
+                        x_text.horizontal_alignment = HorizontalAlignment::Center;
+                        if((x_pos-x_origin).abs()>0.1*x_step as f32) {
+                            if((x_origin-y_origin).abs()>0.01) {
+                                frame.fill_text(x_text);
+                            }
+
+                        }
+
                     }
 
                     while(y_pos > edge as f32) {
                         y_grid.move_to(Point::new(x_origin-3.0, y_pos));
                         y_grid.line_to(Point::new(x_origin+3.0, y_pos));
+                        y_text = Text::from(format!("{:.0}", y_text_val));
+                        y_text_val += (ylims[1]-ylims[0]).abs()/nbr_of_y_points;
+                        y_text.position = Point::new(x_origin-10.0, y_pos);
+                        y_text.vertical_alignment = VerticalAlignment::Center;
+                        y_text.horizontal_alignment = HorizontalAlignment::Right;
+                        if((y_pos-y_origin).abs()>0.1*y_step as f32) {
+                            if((x_origin-y_origin).abs()>0.01) {
+                                frame.fill_text(y_text);                           
+                            }
+
+                        }
                         y_pos-=y_step as f32;
+
+
+
                     }
 
 
@@ -198,6 +235,13 @@ impl<Message> canvas::Program<Message> for State {
                 },
                 _ => panic!("Not a valid string")
             };
+            // Draw the text for the last y value
+            y_text = Text::from(format!("{:.0}", y_text_val));
+            y_text.position = Point::new(x_origin-10.0, edge as f32);
+            y_text.vertical_alignment = VerticalAlignment::Center;
+            y_text.horizontal_alignment = HorizontalAlignment::Right;
+            frame.fill_text(y_text);
+            // Build the grid and draw it.
             let x_grid = x_grid.build();
             let y_grid = y_grid.build();
             frame.stroke(&p, Stroke{color: Color::BLACK, width: 2.0, line_cap: LineCap::Butt,

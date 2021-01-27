@@ -20,15 +20,52 @@ impl Color {
 pub fn min<T: Into<f64>+Copy>(vals: &[T]) -> (f64, usize) {
     let mut min = std::f64::MAX;
     let mut pos: usize = 0;
-    for &val in vals.iter() {
+    for (i, &val) in vals.iter().enumerate() {
         let val:f64 = val.into();
         if val < min {
             min = val;
-            pos+=1;
+            pos = i;
         }
+
 
     }
     return (min, pos)
+}
+
+pub fn double_min<T: Into<(f64, f64)>+Copy>(vals: &[T]) -> (f64,f64) {
+    let mut min_1 = std::f64::MAX;
+    let mut min_2 = min_1;
+    for (&x) in vals.iter() {
+        let (first, second) = x.into();
+        if first < min_1 {
+            min_1 = first;
+        }
+        if second < min_2 {
+            min_2 = second;
+        }
+
+    }
+
+    return (min_1, min_2)
+
+}
+
+pub fn double_max<T: Into<(f64, f64)>+Copy>(vals: &[T]) -> (f64,f64) {
+    let mut max_1 = std::f64::MIN;
+    let mut max_2 = max_1;
+    for (&x) in vals.iter() {
+        let (first, second) = x.into();
+        if first > max_1 {
+            max_1 = first;
+        }
+        if second > max_2 {
+            max_2 = second;
+        }
+
+    }
+
+    return (max_1, max_2)
+
 }
 
 pub struct Axes2D {
@@ -93,7 +130,18 @@ pub struct Grid {
 impl Plot2D {
 
 
-    pub fn plot<T: Into<f64> + Copy>(x: &[T], y: &[T]) -> Self {
+    pub fn plot(l: Line2D) -> Self {
+        let mut default = Self::new();
+        let (x_min, y_min): (f64,f64) = double_min(&l.data);
+        let (x_max, y_max): (f64,f64) = double_max(&l.data);
+        let g = Grid::new(Axes2D::new().axes(&[x_min, x_max], &[y_min, y_max]), "none");
+        default.axes = g;
+        default.lines.push(l);
+        default
+
+    }
+
+    pub fn _plot<T: Into<f64> + Copy>(x: &[T], y: &[T]) -> Self {
         let mut default = Self::new();
         let x_min: f64 = (x[0]).into();
         let x_max: f64 = (*(x.last().unwrap())).into();
@@ -201,6 +249,22 @@ impl Line2D {
         self
     }
 
+
+}
+
+impl From<(&[f64], &[f64])> for Line2D {
+
+    fn from(vals: (&[f64], &[f64])) -> Self {
+        Line2D::new(vals.0, vals.1)
+    }
+    
+}
+
+impl From<(&Vec<f64>, &Vec<f64>)> for Line2D {
+    
+    fn from(vals: (&Vec<f64>, &Vec<f64>)) -> Self {
+        Line2D::new(vals.0, vals.1)
+    }
 
 }
 
