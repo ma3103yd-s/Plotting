@@ -1,4 +1,4 @@
-use crate::window::Plotting;
+use crate::window::Window;
 use crate::window::Message;
 use iced::Settings;
 use iced::window;
@@ -127,6 +127,11 @@ pub struct Grid {
     pub grid: String,
 }
 
+pub struct Plot {
+    
+}
+
+
 impl Plot2D {
 
 
@@ -167,7 +172,7 @@ impl Plot2D {
     }
 
     pub fn show(self) -> iced::Result {
-        Plotting::run(Settings{
+        Window::run(Settings{
             window: window::Settings::default(),
             flags: self,
             default_font: None,
@@ -275,7 +280,7 @@ pub struct Linspace {
 impl Linspace {
 
     pub fn linspace(start: f64, end: f64, steps: usize) -> Vec<f64> {
-        let step_size = (end-start).abs()/(steps as f64);
+        let step_size = (end-start)/(steps as f64);
         let mut data = (0..steps+1).map(|x| start+(x as f64)*step_size).collect();
         data
     }

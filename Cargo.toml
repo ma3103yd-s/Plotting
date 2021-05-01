@@ -8,5 +8,6 @@ edition = "2018"
 
 [dependencies]
 iced = {version="*", features=["canvas"]}
+nalgebra = "*"
 
 

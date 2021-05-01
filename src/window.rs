@@ -4,16 +4,25 @@ use iced::{
     Length, Point, Rectangle, Settings, Size, Vector,
 };
 */
+
+
+
 use iced::{
     canvas::{self, Cursor, path, Path, Text, Stroke, Fill, LineJoin, LineCap},
     executor, window, Application, Canvas, Color, Command, Element,
     Length, Point, Rectangle, Settings, Size, Subscription, Vector, HorizontalAlignment,
-    VerticalAlignment,
+    VerticalAlignment, Row, button, Button,
 };
+
 use std::cmp::Ordering;
 
 
 use crate::plot::*;
+
+pub struct Window {
+   plot: Plotting,
+   button_state: button::State,
+}
 
 pub struct Plotting {
     state: State,
@@ -28,6 +37,13 @@ struct State {
 
 
 impl State {
+
+    pub fn view(&mut self) -> Element<Message> {
+        Canvas::new(self)
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .into()
+    }
     
     pub fn new(plot: Plot2D) -> Self {
         Self {
@@ -40,21 +56,24 @@ impl State {
 
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum Message {
-    ShowCalled(Line2D),
+    PlotSaved,
 }
 
 
-impl Application for Plotting {
+impl Application for Window {
     type Message = Message;
     type Executor = executor::Default;
     type Flags = Plot2D;
 
-    fn new(_flags: Plot2D) -> (Plotting, Command<Self::Message>) {
+    fn new(_flags: Plot2D) -> (Self, Command<Self::Message>) {
         (
-            Plotting {
-                state: State::new(_flags),
+            Self {
+                plot: Plotting {
+                    state: State::new(_flags),
+                },
+                button_state: button::State::new(),
             },
             Command::none(),
         )
@@ -65,22 +84,33 @@ impl Application for Plotting {
     }
 
     fn update(&mut self, message: Message) -> Command<Message> {
-
+        match message {
+            Message::PlotSaved => {
+                ()
+            },
+            _ => (),
+        }
         Command::none()
     }
 
 
     fn view(&mut self) -> Element<Message> {
-        Canvas::new(&mut self.state)
-            .width(Length::Fill)
-            .height(Length::Fill)
+        Row::new()
+            .padding(10)
+            .push(
+                Button::new(&mut self.button_state, iced::Text::new("Save"))
+                .on_press(Message::PlotSaved)
+                )
+            .push(self.plot.state.view())
             .into()
-        
+
+                
     }
 
 }
 
 impl<Message> canvas::Program<Message> for State {
+
     fn draw(
         &self,
         bounds: Rectangle,

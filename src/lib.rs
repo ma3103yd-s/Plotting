@@ -11,4 +11,6 @@ mod tests {
 
 pub mod plot;
 pub mod window;
+pub mod window_3d;
+pub mod math;
 
