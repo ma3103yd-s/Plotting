@@ -64,11 +64,11 @@ pub fn meshgrid(x: &[f32], y: &[f32]) -> (DMatrix<f32>, DMatrix<f32>) {
     let cols = x.len();
     let x_iter = x.iter().copied().cycle().take(rows*cols);
     let y_iter = y.iter().copied().cycle().take(rows*cols);
-    println!("Test");
+    //println!("Test");
     let mut X = DMatrix::from_iterator(rows, cols, x_iter).transpose();
     let mut Y = DMatrix::from_iterator(rows, cols, y_iter);
-    println!("X is {}", X);
-    println!("Y is {}", Y);
+    //println!("X is {}", X);
+    //println!("Y is {}", Y);
 
 
     (X, Y)

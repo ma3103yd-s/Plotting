@@ -156,13 +156,13 @@ impl Axes3D {
     
 }
 
-pub struct Plot3D<'a> {
+pub struct Plot3D {
     title: String,
     xlabel: String,
     ylabel: String,
     zlabel: String,
     axes: Grid3D,
-    surface: Option<Surface3D<'a>>,
+    surface: Option<Surface3D>,
     
 }
 
@@ -198,11 +198,11 @@ impl Colormap {
     
 }
 
-pub struct Surface3D<'a> {
+pub struct Surface3D {
     color: Option<Color>,
-    pub x_data: &'a DMatrix<f32>,
-    pub y_data: &'a DMatrix<f32>,
-    pub z_data: &'a DMatrix<f32>,
+    pub x_data: DMatrix<f32>,
+    pub y_data: DMatrix<f32>,
+    pub z_data: DMatrix<f32>,
     pub colormap: Option<Colormap>,
     legend: Option<String>,
 }
@@ -232,7 +232,7 @@ pub struct Plot {
 }
 
 
-impl<'a> Plot3D<'a> {
+impl Plot3D {
     pub fn new() -> Self {
         Self {
             title: String::from("Plot"),
@@ -244,7 +244,7 @@ impl<'a> Plot3D<'a> {
         }
     }
 
-    pub fn plot(s: Surface3D<'a>) -> Plot3D<'a> {
+    pub fn plot(s: Surface3D) -> Plot3D {
         let mut default = Self::new();
         let x_min: f32 = s.x_data.row(0).min();
         let x_max: f32 = s.x_data.row(0).max();
@@ -264,7 +264,7 @@ impl<'a> Plot3D<'a> {
     pub fn get_axes(&self) -> &Grid3D {
         &self.axes
     }
-    pub fn get_surface(&self) -> &Option<Surface3D<'a>> {
+    pub fn get_surface(&self) -> &Option<Surface3D> {
         &self.surface
     }
 //    pub fn show(plot: Plot3D<'static>) -> iced::Result {
@@ -421,8 +421,8 @@ impl Line2D {
 
 
 }
-impl<'a> Surface3D<'a> {
-    pub fn new(x: &'a DMatrix<f32>, y: &'a DMatrix<f32>, z: &'a DMatrix<f32>) -> Self {
+impl Surface3D {
+    pub fn new(x: DMatrix<f32>, y: DMatrix<f32>, z: DMatrix<f32>) -> Self {
         Self {
             color: Some(Color::BLACK),
             x_data: x,

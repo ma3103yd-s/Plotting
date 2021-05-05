@@ -12,7 +12,7 @@ use nalgebra::base::Matrix;
 
 
 
-pub fn main() {
+pub fn main() -> iced::Result {
 
     let x: Vec<f64> = Linspace::linspace(-10.0, 10.0, 100);
     let y: Vec<f64> = x.iter().map(|&x| x*x*x).collect();
@@ -25,13 +25,13 @@ pub fn main() {
     //
     //
     //
-    let x = Linspace::linspace_f32(0.0, 5.0, 10);
-    let y = Linspace::linspace_f32(0.0, 5.0, 10);
+    let x = Linspace::linspace_f32(-1.0, 1.0, 50);
+    let y = Linspace::linspace_f32(-1.0, 1.0, 50);
     let (X, Y) = meshgrid(&x,&y);
     let Z = X.component_mul(&X)+Y.component_mul(&Y);
     
-    let s = Surface3D::new(&X,&Y,&Z);
-    let plot = Plot3D::new();
+    let s = Surface3D::new(X,Y,Z);
+    let plot = Plot3D::plot(s);
 
     //Plot3D::show(plot)
 
@@ -41,7 +41,7 @@ pub fn main() {
         default_font: None,
         default_text_size: 20,
         antialiasing: true,
-    });
+    })
     //plot.show();
 
     

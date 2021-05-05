@@ -14,13 +14,13 @@ use std::cmp::Ordering;
 
 
 
-pub struct Window3D<'a> {
-    state: State<'a>,
+pub struct Window3D {
+    state: State,
 }
 
-pub struct State<'a> {
+pub struct State {
     vertice_cache: canvas::Cache,
-    plot: Plot3D<'a>,
+    plot: Plot3D,
     camera: Vector3<f32>,
     vertices: MatrixMN<f32, U3,U8>,
     camera_control: Camera,
@@ -39,13 +39,13 @@ pub enum Message {
     
 }
 
-impl<'a> State<'a> {
+impl State {
     
-    pub fn new(plot: Plot3D<'a>) -> Self {
+    pub fn new(plot: Plot3D) -> Self {
         Self {
             vertice_cache: Default::default(),
             plot,
-            camera: Vector3::new(0.0, 0.0, 30.0),
+            camera: Vector3::new(0.0, 0.0, 10.0),
             vertices: MatrixMN::from_columns(&[Vector3::new(0.0,0.0,0.0), Vector3::new(0.0, 1.0, 0.0),
             Vector3::new(1.0, 1.0, 0.0), Vector3::new(1.0, 0.0, 0.0), Vector3::new(1.0, 0.0, -1.0),
             Vector3::new(1.0,1.0,-1.0),Vector3::new(0.0,1.0,-1.0),Vector3::new(0.0,0.0,-1.0)]),
@@ -54,12 +54,12 @@ impl<'a> State<'a> {
     }
 }
 
-impl<'a> Application for Window3D<'a> {
+impl Application for Window3D {
     type Message = Message;
     type Executor = executor::Default;
-    type Flags = Plot3D<'a>;
+    type Flags = Plot3D;
 
-    fn new(_flags: Plot3D<'a>) -> (Self, Command<Self::Message>) {
+    fn new(_flags: Plot3D) -> (Self, Command<Self::Message>) {
         (
             Self {state: State::new(_flags)},
             Command::none(),
@@ -105,7 +105,7 @@ pub fn find_point(p: f32, points: &[(f32,f32)]) -> (f32,f32) {
 }
 
 
-impl<'a,Message> canvas::Program<Message> for State<'a> {
+impl<Message> canvas::Program<Message> for State {
 
     fn update(
         &mut self,
@@ -113,8 +113,8 @@ impl<'a,Message> canvas::Program<Message> for State<'a> {
         bounds: Rectangle,
         cursor: Cursor,
         ) -> (event::Status, Option<Message>) {
-            let dphi = 0.01;
-            let dtheta = 0.01;
+            let dphi = 0.001;
+            let dtheta = 0.001;
             let cursor_position =
                 if let Some(position) = cursor.position_in(&bounds) {
                     position
@@ -129,13 +129,15 @@ impl<'a,Message> canvas::Program<Message> for State<'a> {
                                                                   cursor_position.y);
                         },
                         mouse::Event::CursorMoved{x, y} => {
+                            
                             //println!("Cursor position is {:?}, {:?}", x, y);
                             match self.camera_control {
                                 Camera::Pressed(x_c, y_c) => {
                                     let dx = x-x_c;
                                     let dy = y-y_c;
+
                                     let (r, theta, phi) = cartesian_to_polar(&self.camera);
-                                    let phi_new = phi+dx*dphi;
+                                    let phi_new = phi+dy*dphi;
                                     let theta_new = theta-dy*dtheta;
                                     self.vertice_cache.clear();
                                     self.camera = polar_to_cartesian(r,theta_new, phi_new);
@@ -175,12 +177,12 @@ impl<'a,Message> canvas::Program<Message> for State<'a> {
 
 
                 let mut vertex_map: Vec<Vec<usize>> = Vec::with_capacity(self.vertices.ncols());
-                let y_1 = Vector3::new(0.0,0.0, -ylims[0]);
-                let y_2 = Vector3::new(0.0, 0.0, -ylims[1]);
-                let x_1 = Vector3::new(xlims[0], 0.0, 0.0);
-                let x_2 = Vector3::new(xlims[1], 0.0, 0.0);
-                let z_1 = Vector3::new(0.0,zlims[0], 0.0);
-                let z_2 = Vector3::new(0.0, zlims[1], 0.0);
+                let y_1 = Vector3::new(0.0,0.0, -2.0);
+                let y_2 = Vector3::new(0.0, 0.0, 2.0);
+                let x_1 = Vector3::new(-2.0, 0.0, 0.0);
+                let x_2 = Vector3::new(2.0, 0.0, 0.0);
+                let z_1 = Vector3::new(0.0,-2.0, 0.0);
+                let z_2 = Vector3::new(0.0, 2.0, 0.0);
                 //let x_axes = Vector3::new(5.0, 0.0, 0.0);
                 //let z_axes = Vector3::new(0.0, 5.0, 0.0);
 
@@ -198,7 +200,7 @@ impl<'a,Message> canvas::Program<Message> for State<'a> {
 
                 let mut origin = Point::new(frame.width()*0.5, frame.height()*0.5);
                 // Create grid of points
-                let mut grid = Linspace::linspace_f32(min_val, max_val, 1000);
+                let mut grid = Linspace::linspace_f32(-3.0, 3.0, 1000);
 
 
                 let mut x_grid_window = map_points_f32(&grid, (frame.width()*0.3, frame.width()*0.7));
@@ -222,21 +224,36 @@ impl<'a,Message> canvas::Program<Message> for State<'a> {
                 let z_axes_1 = project(&camera_view, &z_1.into());
                 let z_axes_2 = project(&camera_view, &z_2.into());
 
-                for axes in &[x_axes_1, x_axes_2, y_axes_1, y_axes_2, z_axes_1, z_axes_2] {
-                    let x_1 = axes[0];
-                    let y_1 = axes[1];
-//                    println!("x1, y1 is {},{}", x_1, y_1);
-//                    println!("x2, y2 is {},{}", x_2,y_2);
-                    let x_1_coord = find_point(x_1, &x_grid_window[0..]).1;
-                    let y_1_coord = find_point(y_1, &y_grid_window[0..]).1;
+                let all_axes = [(x_axes_1, x_axes_2), (y_axes_1, y_axes_2), (z_axes_1, z_axes_2)];
+
+                for pair in all_axes.iter() {
+                let x_1_coord = find_point(pair.0[0], &x_grid_window[0..]).1;
+                let y_1_coord = find_point(pair.0[1], &y_grid_window[0..]).1;
+                let x_2_coord = find_point(pair.1[0], &x_grid_window[0..]).1;
+                let y_2_coord = find_point(pair.1[1], &y_grid_window[0..]).1;
+                axes_drawer.move_to(Point::new(x_1_coord, y_1_coord));
+                axes_drawer.line_to(Point::new(x_2_coord, y_2_coord));
+                }
+
+
+
+//                for axes in &[(x_axes_1, x_axes_2), (y_axes_1, y_axes_2), (z_axes_1, z_axes_2)] {
+//                    let x_1 = axes.0[0];
+//                    let y_1 = axes.1[1];
+//                    let x_2 = axes.1[0];
+//                    let y_2 = axes.1[1];
+////                    println!("x1, y1 is {},{}", x_1, y_1);
+////                    println!("x2, y2 is {},{}", x_2,y_2);
+//                    let x_1_coord = find_point(x_1, &x_grid_window[0..]).1;
+//                    let y_1_coord = find_point(y_1, &y_grid_window[0..]).1;
 //                    let x_2_coord = find_point(x_2, &x_grid_window[0..]).1;
 //                    let y_2_coord = find_point(y_2, &y_grid_window[0..]).1;
-//                    println!("x1_coord, y1_cord is {},{}", x_1_coord, y_1_coord);
-//                    println!("x2_coord, y2_coord is {},{}", x_2_coord,y_2_coord);
-                    axes_drawer.move_to(origin);
-                    axes_drawer.line_to(Point::new(x_1_coord, y_1_coord));
-
-                }
+////                    println!("x1_coord, y1_cord is {},{}", x_1_coord, y_1_coord);
+////                    println!("x2_coord, y2_coord is {},{}", x_2_coord,y_2_coord);
+//                    axes_drawer.move_to(Point::new(x_1_coord, y_1_coord));
+//                    axes_drawer.line_to(Point::new(x_2_coord, y_2_coord));
+//
+//                }
 
                 let axes_p = axes_drawer.build();
                 frame.stroke(&axes_p, Stroke{color: Color::BLACK, width: 2.0, line_cap: LineCap::Butt
@@ -253,7 +270,7 @@ impl<'a,Message> canvas::Program<Message> for State<'a> {
                         for (i, &val) in row.iter().enumerate() {
                             let x = s.x_data[(row_nbr,i)];
                             let z = val;
-                            let point = project(&camera_view, &Vector3::new(x,z,-y));
+                            let point = project(&camera_view, &Vector3::new(x,y,-z));
                             let x_coord = find_point(point[0], &x_grid_window[0..]);
                             let y_coord = find_point(point[1], &y_grid_window[0..]);
                             grid_drawer.line_to(Point::new(x_coord.1, y_coord.1));
@@ -267,7 +284,7 @@ impl<'a,Message> canvas::Program<Message> for State<'a> {
                         for (i, &val) in col.iter().enumerate() {
                             let y = s.y_data[(i, col_nbr)];
                             let z = val;
-                            let point = project(&camera_view, &Vector3::new(x,z,-y));
+                            let point = project(&camera_view, &Vector3::new(x,y,-z));
                             let x_coord = find_point(point[0], &x_grid_window[0..]);
                             let y_coord = find_point(point[0], &y_grid_window[0..]);
                             grid_drawer.line_to(Point::new(x_coord.1, y_coord.1));
@@ -305,6 +322,7 @@ impl<'a,Message> canvas::Program<Message> for State<'a> {
 //                        }
 //
 //                    }).unwrap().1;
+//
 //                    let y_coord = y_grid_window.iter().min_by(|&&y_1, &&y_2| {
 //                        let diff = (y_1.0 as f32-y).abs()-(y_2.0 as f32-y).abs();
 //                        if diff.is_sign_positive() {
@@ -317,6 +335,8 @@ impl<'a,Message> canvas::Program<Message> for State<'a> {
 //                        }
 //
 //                    }).unwrap().1;
+//                    let x_coord = find_point(x, &x_grid_window[0..]).1;
+//                    let y_coord = find_point(y, &y_grid_window[0..]).1;
 //
 //                    //println!("y coord is {}, and x coord is {}", y_coord, x_coord);
 //
@@ -344,7 +364,7 @@ impl<'a,Message> canvas::Program<Message> for State<'a> {
 //                frame.fill(&p, iced::Color::BLACK);
 //                frame.stroke(&p_v, Stroke{color: Color::BLACK, width: 2.0, line_cap: LineCap::Butt
 //                , line_join: LineJoin::Miter});
-                //frame.fill(&p_v, iced::Color::BLACK);
+//                frame.fill(&p_v, iced::Color::BLACK);
 
 
         
