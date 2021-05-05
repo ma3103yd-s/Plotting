@@ -1,8 +1,10 @@
-use crate::window::Window;
+use crate::window::{Window};
+use crate::window_3d::Window3D;
 use crate::window::Message;
 use iced::Settings;
 use iced::window;
 use iced::Application;
+use nalgebra::base::{Matrix, DMatrix};
 
 
 
@@ -95,13 +97,14 @@ impl Axes2D {
         self
     }
     pub fn scale(&mut self, scale: f64) {
-        self.scale=1.0
+        self.scale=scale
     }
     pub fn get_scale(&self) -> f64 {
         self.scale
         
     }
 }
+
 
 pub struct Plot2D {
     title: String,
@@ -110,6 +113,103 @@ pub struct Plot2D {
     axes: Grid,
     lines: Vec<Line2D>,
     
+}
+
+pub struct Axes3D {
+    xlim: [f32;2],
+    ylim: [f32;2],
+    zlim: [f32;2],
+    scale: f32,
+    
+}
+
+impl Axes3D {
+    pub fn new() -> Self {
+        Self {
+            xlim: [0.0, 1.0],
+            ylim: [0.0, 1.0],
+            zlim: [0.0, 1.0],
+            scale: 1.0,
+        }
+    }
+    pub fn get_xaxes(&self) -> [f32;2] {
+        self.xlim
+    }
+    pub fn get_yaxes(&self) -> [f32;2] {
+        self.ylim
+    }
+    pub fn get_zaxes(&self) -> [f32;2] {
+       self.zlim 
+    }
+    pub fn scale(&mut self, scale: f32) {
+        self.scale = scale;
+        
+    }
+    pub fn get_scale(&self) -> f32 {
+        self.scale
+    }
+    pub fn axes(mut self, xlim: &[f32;2], ylim: &[f32;2], zlim: &[f32;2]) -> Self {
+        self.xlim = xlim.to_owned();
+        self.ylim = ylim.to_owned();
+        self
+    }
+    
+}
+
+pub struct Plot3D<'a> {
+    title: String,
+    xlabel: String,
+    ylabel: String,
+    zlabel: String,
+    axes: Grid3D,
+    surface: Option<Surface3D<'a>>,
+    
+}
+
+pub struct Colormap(Vec<(f64,f64,f64)>);
+
+impl Colormap {
+    
+    pub fn new(name: &str, data: &[f32]) -> Self {
+        let vals = Linspace::linspace(0.0,3.0, data.len());
+        let mut colors = Vec::with_capacity(data.len());
+        let mut r = 0.0;
+        let mut g = 0.0;
+        let mut b = 0.0;
+        match name {
+            "hot" => {
+            for val in vals.iter() {
+                if val.max(1.0) == 1.0 {
+                    r+=val;
+                } else if(val.max(2.0)==2.0) {
+                g+=val-1.0;
+                } else {
+                    b+=val-2.0;
+                }
+                colors.push((r,g,b));
+                }
+            },
+            _ => (),
+        };
+        Self{0:colors}
+
+
+    }
+    
+}
+
+pub struct Surface3D<'a> {
+    color: Option<Color>,
+    pub x_data: &'a DMatrix<f32>,
+    pub y_data: &'a DMatrix<f32>,
+    pub z_data: &'a DMatrix<f32>,
+    pub colormap: Option<Colormap>,
+    legend: Option<String>,
+}
+
+pub struct Grid3D {
+    pub axes: Axes3D,
+    pub grid: String,
 }
 
 #[derive(Debug)]
@@ -131,6 +231,53 @@ pub struct Plot {
     
 }
 
+
+impl<'a> Plot3D<'a> {
+    pub fn new() -> Self {
+        Self {
+            title: String::from("Plot"),
+            xlabel: String::from("x"),
+            ylabel: String::from("y"),
+            zlabel: String::from("z"),
+            axes: Grid3D::default(),
+            surface: None,
+        }
+    }
+
+    pub fn plot(s: Surface3D<'a>) -> Plot3D<'a> {
+        let mut default = Self::new();
+        let x_min: f32 = s.x_data.row(0).min();
+        let x_max: f32 = s.x_data.row(0).max();
+        let y_min: f32 = s.y_data.column(0).min();
+        let y_max: f32 = s.y_data.column(0).max();
+        let z_min: f32 = s.z_data.min();
+        let z_max: f32 = s.z_data.max();
+        let g = Grid3D::new(Axes3D::new().axes(&[x_min, x_max],
+                                               &[y_min, y_max],
+                                               &[z_min, z_max]),
+                                               "none");
+        default.axes = g;
+        default.surface = Some(s);
+        default
+    }
+
+    pub fn get_axes(&self) -> &Grid3D {
+        &self.axes
+    }
+    pub fn get_surface(&self) -> &Option<Surface3D<'a>> {
+        &self.surface
+    }
+//    pub fn show(plot: Plot3D<'static>) -> iced::Result {
+//        Window3D::run(Settings{
+//            window: window::Settings::default(),
+//            flags: plot,
+//            default_font: None,
+//            default_text_size: 20,
+//            antialiasing: true,
+//        })
+//    }
+
+}
 
 impl Plot2D {
 
@@ -222,6 +369,24 @@ impl Grid {
     }
 }
 
+impl Grid3D {
+    pub fn default() -> Self {
+        Self {
+            axes: Axes3D{xlim: [0.0, 1.0], ylim: [0.0, 1.0], zlim: [0.0, 1.0], scale: 1.0},
+            grid: String::from("none"),
+        }
+    }
+    pub fn get_axes(&self) -> &Axes3D {
+        &self.axes
+    }
+    pub fn new(axes: Axes3D, grid: &str) -> Self {
+        Self {
+            axes,
+            grid: grid.to_owned(),
+        }
+    }
+}
+
 impl Line2D {
 
     pub fn new<T: Into<f64> + Copy>(x: &[T], y: &[T]) -> Self {
@@ -256,6 +421,27 @@ impl Line2D {
 
 
 }
+impl<'a> Surface3D<'a> {
+    pub fn new(x: &'a DMatrix<f32>, y: &'a DMatrix<f32>, z: &'a DMatrix<f32>) -> Self {
+        Self {
+            color: Some(Color::BLACK),
+            x_data: x,
+            y_data: y,
+            z_data: z,
+            colormap: None,
+            legend: None,
+        }
+        
+    }
+    pub fn color(mut self, color: Color) -> Self {
+        self.color = Some(color);
+        self
+    }
+    pub fn get_color(&self) -> &Option<Color> {
+        &self.color
+    }
+}
+
 
 impl From<(&[f64], &[f64])> for Line2D {
 
@@ -273,11 +459,11 @@ impl From<(&Vec<f64>, &Vec<f64>)> for Line2D {
 
 }
 
-pub struct Linspace {
-    data: Vec<f64>,
+pub struct Linspace<T> {
+    data: Vec<T>,
 }
 
-impl Linspace {
+impl Linspace<f64> {
 
     pub fn linspace(start: f64, end: f64, steps: usize) -> Vec<f64> {
         let step_size = (end-start)/(steps as f64);
@@ -287,7 +473,16 @@ impl Linspace {
 
 }
 
-impl IntoIterator for Linspace {
+impl Linspace<f32> {
+    pub fn linspace_f32(start: f32, end: f32, steps: usize) -> Vec<f32> {
+        let step_size = (end-start)/(steps as f32);
+        let mut data = (0..steps+1).map(|x| start+(x as f32)*step_size).collect();
+        data
+    }
+    
+}
+
+impl IntoIterator for Linspace<f64> {
     type Item = f64;
     type IntoIter = std::vec::IntoIter<Self::Item>;
     

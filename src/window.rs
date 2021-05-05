@@ -274,8 +274,8 @@ impl<Message> canvas::Program<Message> for State {
             // Build the grid and draw it.
             let x_grid = x_grid.build();
             let y_grid = y_grid.build();
-            frame.stroke(&p, Stroke{color: Color::BLACK, width: 2.0, line_cap: LineCap::Butt,
-                line_join: LineJoin::Miter});
+            //frame.stroke(&p, Stroke{color: Color::BLACK, width: 2.0, line_cap: LineCap::Butt,
+              //  line_join: LineJoin::Miter});
             frame.stroke(&x_grid, Stroke{color: Color::BLACK, width: 1.0, line_cap: LineCap::Butt,
                 line_join: LineJoin::Miter});
             frame.stroke(&y_grid, Stroke{color: Color::BLACK, width: 1.0, line_cap: LineCap::Butt,

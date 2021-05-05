@@ -1,14 +1,18 @@
-use iced::{Application,Settings};
+use iced::{Application,Settings, window};
 use plotting::plot::Plot2D;
 use plotting::plot::Linspace;
 use plotting::plot::Line2D;
 use plotting::plot::Color;
+use plotting::plot::Plot3D;
+use plotting::plot::Surface3D;
 use plotting::window_3d::Window3D;
+use plotting::math::*;
+use nalgebra::base::Matrix;
 
 
 
 
-pub fn main() -> iced::Result {
+pub fn main() {
 
     let x: Vec<f64> = Linspace::linspace(-10.0, 10.0, 100);
     let y: Vec<f64> = x.iter().map(|&x| x*x*x).collect();
@@ -18,14 +22,26 @@ pub fn main() -> iced::Result {
     //plot.add_line(line);
     //Plot2D::plot(line).show();
     //println!("lines are {:?}", plot.get_lines());
-    Window3D::run(Settings {
+    //
+    //
+    //
+    let x = Linspace::linspace_f32(0.0, 5.0, 10);
+    let y = Linspace::linspace_f32(0.0, 5.0, 10);
+    let (X, Y) = meshgrid(&x,&y);
+    let Z = X.component_mul(&X)+Y.component_mul(&Y);
+    
+    let s = Surface3D::new(&X,&Y,&Z);
+    let plot = Plot3D::new();
+
+    //Plot3D::show(plot)
+
+    Window3D::run(Settings{
+        window: window::Settings::default(),
+        flags: plot,
+        default_font: None,
+        default_text_size: 20,
         antialiasing: true,
-        ..Settings::default()
-    })
-
-
-
-
+    });
     //plot.show();
 
     
