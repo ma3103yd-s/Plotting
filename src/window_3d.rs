@@ -45,7 +45,7 @@ impl State {
         Self {
             vertice_cache: Default::default(),
             plot,
-            camera: Vector3::new(0.0, 0.0, 10.0),
+            camera: Vector3::new(0.0, 10.0, 0.0),
             vertices: MatrixMN::from_columns(&[Vector3::new(0.0,0.0,0.0), Vector3::new(0.0, 1.0, 0.0),
             Vector3::new(1.0, 1.0, 0.0), Vector3::new(1.0, 0.0, 0.0), Vector3::new(1.0, 0.0, -1.0),
             Vector3::new(1.0,1.0,-1.0),Vector3::new(0.0,1.0,-1.0),Vector3::new(0.0,0.0,-1.0)]),
@@ -261,37 +261,97 @@ impl<Message> canvas::Program<Message> for State {
 
                 let mut grid_drawer = path::Builder::new();
                 
+//                if let Some(s) = self.plot.get_surface() {
+//                    let mut row_nbr = 0;
+//                    for row in s.z_data.row_iter() {
+//                        let y = s.y_data[(row_nbr,0)];
+//                        let start_x = s.x_data[(0,0)];
+//                        let start_z = s.z_data[(row_nbr,0)];
+//                        let start_point = project(&camera_view,
+//                                                  &Vector3::new(start_x, y, -start_z));
+//                        let start_coord_x = find_point(start_point[0], &x_grid_window[0..]).1;
+//                        let start_coord_y = find_point(start_point[1], &y_grid_window[0..]).1;
+//                        
+//                        grid_drawer.move_to(Point::new(start_coord_x, start_coord_y));
+//
+//                        for (i, &val) in row.iter().enumerate() {
+//                            let x = s.x_data[(0,i)];
+//                            let z = val;
+//                            let point = project(&camera_view, &Vector3::new(x,y,-z));
+//                            let x_coord = find_point(point[0], &x_grid_window[0..]);
+//                            let y_coord = find_point(point[1], &y_grid_window[0..]);
+//                            grid_drawer.line_to(Point::new(x_coord.1, y_coord.1));
+//                        }
+//                        row_nbr+=1;
+//                    }
+//                    let mut col_nbr = 0;
+//                    for col in s.z_data.column_iter() {
+//                        let x = s.x_data[(0,col_nbr)];
+//                        let start_y = s.y_data[(0,0)];
+//                        let start_z = s.z_data[(0,col_nbr)];
+//                        let start_point = project(&camera_view,
+//                                                  &Vector3::new(x, start_y, -start_z));
+//                        let start_coord_x = find_point(start_point[0], &x_grid_window[0..]).1;
+//                        let start_coord_y = find_point(start_point[1], &y_grid_window[0..]).1;
+//                        grid_drawer.move_to(Point::new(start_coord_x, start_coord_y));
+//                        for (i, &val) in col.iter().enumerate() {
+//                            let y = s.y_data[(i, col_nbr)];
+//                            let z = val;
+//                            let point = project(&camera_view, &Vector3::new(x,y,-z));
+//                            let x_coord = find_point(point[0], &x_grid_window[0..]);
+//                            let y_coord = find_point(point[1], &y_grid_window[0..]);
+//                            grid_drawer.line_to(Point::new(x_coord.1, y_coord.1));
+//                        }
+//                        col_nbr+=1;
+//                    }
+//                }
 
                 if let Some(s) = self.plot.get_surface() {
-                    grid_drawer.move_to(origin);
-                    let mut row_nbr = 0;
-                    for row in s.z_data.row_iter() {
-                        let y = s.y_data[(row_nbr,0)];
-                        for (i, &val) in row.iter().enumerate() {
-                            let x = s.x_data[(row_nbr,i)];
-                            let z = val;
-                            let point = project(&camera_view, &Vector3::new(x,y,-z));
+                    let ndiag = s.z_data.nrows();
+                    for i in 0..ndiag {
+                        let size = ndiag-i;
+                        let row = s.z_data.slice((i,i), (1,size));
+                        let col = s.z_data.slice((i,i), (size, 1));
+                        //println!("row is {}", row);
+                        //println!("col is {}", col);
+                        //let row = s.z_data[(i, i..)];
+                        //let col = s.z_data[(i.., i)];
+                        let start_z = s.z_data[(i, i)];
+                        let start_x = s.x_data[(i, i)];
+                        let start_y = s.y_data[(i, i)];
+                        let start_point = project(&camera_view,
+                                                  &Vector3::new(start_x, start_z, -start_y));
+                        let start_coord_x = find_point(start_point[0], &x_grid_window[0..]).1;
+                        let start_coord_y = find_point(start_point[1], &y_grid_window[0..]).1;
+                        grid_drawer.move_to(Point::new(start_coord_x, start_coord_y));
+                        let mut col_nbr = i;
+                        let mut row_nbr = i;
+
+                        for &z in row.iter() {
+                            let x = s.x_data[(i, col_nbr)];
+                            let y = s.y_data[(i, col_nbr)];
+                            let point = project(&camera_view, &Vector3::new(x,z,-y));
                             let x_coord = find_point(point[0], &x_grid_window[0..]);
                             let y_coord = find_point(point[1], &y_grid_window[0..]);
                             grid_drawer.line_to(Point::new(x_coord.1, y_coord.1));
+                            col_nbr+=1;
+                            
                         }
-                        row_nbr+=1;
-                    }
-                    grid_drawer.move_to(origin);
-                    let mut col_nbr = 0;
-                    for col in s.z_data.column_iter() {
-                        let x = s.x_data[(0,col_nbr)];
-                        for (i, &val) in col.iter().enumerate() {
-                            let y = s.y_data[(i, col_nbr)];
-                            let z = val;
-                            let point = project(&camera_view, &Vector3::new(x,y,-z));
+                        
+                        grid_drawer.move_to(Point::new(start_coord_x, start_coord_y));
+                        for &z in col.iter() {
+                            let x = s.x_data[(row_nbr, i)];
+                            let y = s.y_data[(row_nbr, i)];
+                            let point = project(&camera_view, &Vector3::new(x,z,-y));
                             let x_coord = find_point(point[0], &x_grid_window[0..]);
-                            let y_coord = find_point(point[0], &y_grid_window[0..]);
+                            let y_coord = find_point(point[1], &y_grid_window[0..]);
                             grid_drawer.line_to(Point::new(x_coord.1, y_coord.1));
+                            row_nbr+=1;
+                            
                         }
-                        col_nbr+=1;
                     }
                 }
+
 
                 let grid_p = grid_drawer.build();
 
