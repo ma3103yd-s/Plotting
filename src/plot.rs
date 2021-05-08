@@ -114,7 +114,7 @@ pub struct Plot2D {
     lines: Vec<Line2D>,
     
 }
-
+#[derive(Debug)]
 pub struct Axes3D {
     xlim: [f32;2],
     ylim: [f32;2],
@@ -151,6 +151,7 @@ impl Axes3D {
     pub fn axes(mut self, xlim: &[f32;2], ylim: &[f32;2], zlim: &[f32;2]) -> Self {
         self.xlim = xlim.to_owned();
         self.ylim = ylim.to_owned();
+        self.zlim = zlim.to_owned();
         self
     }
     
@@ -206,7 +207,7 @@ pub struct Surface3D {
     pub colormap: Option<Colormap>,
     legend: Option<String>,
 }
-
+#[derive(Debug)]
 pub struct Grid3D {
     pub axes: Axes3D,
     pub grid: String,
@@ -256,7 +257,9 @@ impl Plot3D {
                                                &[y_min, y_max],
                                                &[z_min, z_max]),
                                                "none");
+        println!("axes are {:?}", g);
         default.axes = g;
+
         default.surface = Some(s);
         default
     }

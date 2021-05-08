@@ -53,8 +53,16 @@ pub fn polar_to_cartesian(r: f32, theta: f32, phi: f32) -> Vector3<f32> {
 
 pub fn cartesian_to_polar(points: &Vector3<f32>) -> (f32,f32,f32) {
     let r = points.norm();
-    let theta = (points[2]/r).acos();
-    let phi = (points[1]).atan2(points[0]);
+    let mut theta = (points[2]/r).acos();
+    let mut phi = (points[1]).atan2(points[0]);
+    if(theta>std::f32::consts::PI) {
+        theta = theta-std::f32::consts::PI;
+        phi = phi+std::f32::consts::PI;
+    } else if theta <0_f32 {
+        theta = theta.abs();
+        phi = phi+std::f32::consts::PI;
+    }
+
     (r, theta, phi)
 }
 
