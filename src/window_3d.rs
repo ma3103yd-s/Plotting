@@ -172,11 +172,10 @@ impl<Message> canvas::Program<Message> for State {
                 let xlims = self.plot.get_axes().get_axes().get_xaxes();
                 let ylims = self.plot.get_axes().get_axes().get_yaxes();
                 let zlims = self.plot.get_axes().get_axes().get_zaxes();
-                println!("zlims are {:?}", zlims);
+
                 let max_val: f32 = (xlims[1].max(ylims[1])).max(zlims[1]);
                 let min_val: f32 = (xlims[0].min(ylims[0])).min(zlims[0]);
-                println!("min val is {}", min_val);
-                println!("max val is {}", max_val);
+
 
 
                 let mut vertex_map: Vec<Vec<usize>> = Vec::with_capacity(self.vertices.ncols());
@@ -288,7 +287,22 @@ impl<Message> canvas::Program<Message> for State {
                             rectangle_drawer.line_to(p4);
                             rectangle_drawer.line_to(p1);
                             let r_p = rectangle_drawer.build();
-                            frame.fill(&r_p, iced::Color::new(0.0, 0.0, 1.0, 0.9));
+                            let color = if let Some(c) = &s.colormap {
+                                let color_index = rows*col+row;
+                                let r = c.0[color_index].0;
+                                let g = c.0[color_index].1;
+                                let b = c.0[color_index].2;
+                                //println!("r,g,b is {},{},{}", r,g,b);
+                                //println!("color index is {}", color_index);
+                                iced::Color::new(r,g,b,0.9)                             
+                            } else {
+                                if let Some(c2) = s.get_color() {
+                                    iced::Color::new(c2.0, c2.1, c2.2, c2.3)
+                                } else { iced::Color::new(0.0, 0.0, 1.0, 0.9)}
+                            };
+
+                            //println!("color is {:?}", color);
+                            frame.fill(&r_p, color);
                             frame.stroke(&r_p, Stroke{color: Color::BLACK, width: 2.0,
                                 line_cap: LineCap::Butt,
                                 line_join: LineJoin::Miter});

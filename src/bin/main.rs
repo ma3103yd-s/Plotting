@@ -34,7 +34,7 @@ pub fn main() -> iced::Result {
     //println!("Z is {}", Z);
     
     let s = Surface3D::new(X,Y,Z);
-    let plot = Plot3D::plot(s);
+    let plot = Plot3D::plot(s).colormap("hot");
 
     //Plot3D::show(plot)
 
