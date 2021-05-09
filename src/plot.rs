@@ -177,7 +177,7 @@ impl Colormap {
         let vals = Linspace::linspace(0.0,3.0, data.len());
         let mut colors = vec![(0.0,0.0,0.0);data.len()];
         let mut sorted_data: Vec<f32> = data.iter().map(|x| *x).collect();
-        sorted_data.as_mut_slice().sort_unstable_by(|a, b| b.partial_cmp(a).unwrap());
+        sorted_data.as_mut_slice().sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
 
         let color_map = map_points_f32(&sorted_data[0..], (0.0, 3.0));
         //println!("color_map is {:?}", color_map);
