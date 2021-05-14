@@ -1,6 +1,7 @@
 use crate::window::{Window};
 use crate::window_3d::Window3D;
 use crate::window::Message;
+use crate::math::*;
 use iced::Settings;
 use iced::window;
 use iced::Application;
@@ -16,6 +17,7 @@ impl Color {
 
     pub const BLACK: Color = Color{0: 0.0, 1: 0.0, 2: 0.0, 3: 1.0};
     pub const RED: Color = Color(1.0, 0.0, 0.0, 1.0);
+    pub const BLUE: Color = Color(0.0, 0.0, 1.0, 1.0);
 
 }
 
@@ -167,27 +169,39 @@ pub struct Plot3D {
     
 }
 
-pub struct Colormap(Vec<(f64,f64,f64)>);
+pub struct Colormap(pub Vec<(f32,f32,f32)>);
 
 impl Colormap {
     
     pub fn new(name: &str, data: &[f32]) -> Self {
         let vals = Linspace::linspace(0.0,3.0, data.len());
-        let mut colors = Vec::with_capacity(data.len());
-        let mut r = 0.0;
-        let mut g = 0.0;
-        let mut b = 0.0;
+        let mut colors = vec![(0.0,0.0,0.0);data.len()];
+        let mut sorted_data: Vec<f32> = data.iter().map(|x| *x).collect();
+        sorted_data.as_mut_slice().sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
+
+        let color_map = map_points_f32(&sorted_data[0..], (0.0, 3.0));
+        //println!("color_map is {:?}", color_map);
         match name {
             "hot" => {
-            for val in vals.iter() {
-                if val.max(1.0) == 1.0 {
-                    r+=val;
-                } else if(val.max(2.0)==2.0) {
-                g+=val-1.0;
-                } else {
-                    b+=val-2.0;
+            for val in color_map.iter() {
+                let mut r = 0.0;
+                let mut g = 0.0;
+                let mut b = 0.0;
+                if val.1.max(1.0) == 1.0 {
+                    r=val.1;
+                } else if val.1.max(2.0) == 2.0 {
+                    r=1.0;
+                    g=val.1-1.0;
+                } else if val.1.max(3.0) == 3.0{
+                    r=1.0;
+                    g=1.0;
+                    b=val.1-2.0;
                 }
-                colors.push((r,g,b));
+                let mut index_iter= data.iter().enumerate().filter(|(i, x)| **x==val.0);
+                while let Some(indices) = index_iter.next() {
+                    colors[indices.0] = (r,g,b);
+                }
+                
                 }
             },
             _ => (),
@@ -257,11 +271,23 @@ impl Plot3D {
                                                &[y_min, y_max],
                                                &[z_min, z_max]),
                                                "none");
-        println!("axes are {:?}", g);
         default.axes = g;
 
         default.surface = Some(s);
         default
+    }
+
+    pub fn colormap(mut self, colormap: &str) -> Plot3D {
+        let s = self.surface.map(|mut s| {
+            let cmap = Colormap::new(colormap, s.z_data.as_slice());
+            s.colormap = Some(cmap);
+            s
+        });
+        self.surface = s;
+        self
+
+
+
     }
 
     pub fn get_axes(&self) -> &Grid3D {
@@ -270,6 +296,7 @@ impl Plot3D {
     pub fn get_surface(&self) -> &Option<Surface3D> {
         &self.surface
     }
+
 //    pub fn show(plot: Plot3D<'static>) -> iced::Result {
 //        Window3D::run(Settings{
 //            window: window::Settings::default(),
@@ -427,7 +454,7 @@ impl Line2D {
 impl Surface3D {
     pub fn new(x: DMatrix<f32>, y: DMatrix<f32>, z: DMatrix<f32>) -> Self {
         Self {
-            color: Some(Color::BLACK),
+            color: Some(Color::BLUE),
             x_data: x,
             y_data: y,
             z_data: z,
@@ -442,6 +469,9 @@ impl Surface3D {
     }
     pub fn get_color(&self) -> &Option<Color> {
         &self.color
+    }
+    pub fn as_mut_ref(&mut self) -> &mut Self {
+        self
     }
 }
 
