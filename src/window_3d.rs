@@ -214,9 +214,62 @@ impl<Message> canvas::Program<Message> for State {
                 // Draw the axes
                 let mut axes_drawer = path::Builder::new();
                 let axes_3d = self.plot.get_axes().get_axes();
-                let nbr_of_x_points = (xlims[1]-xlims[0])/axes_3d.get_scale();
-                let nbr_of_y_points = (ylims[1]-ylims[0])/axes_3d.get_scale();
-                let nbr_of_z_points = (zlims[1]-zlims[0])/axes_3d.get_scale();
+                let scale = axes_3d.get_scale();
+                let nbr_of_x_points = (xlims[1]-xlims[0])/scale;
+                let nbr_of_y_points = (ylims[1]-ylims[0])/scale;
+                let nbr_of_z_points = (zlims[1]-zlims[0])/scale;
+
+                let mut grid_drawer = path::Builder::new();
+
+                let x_vals_lin = Linspace::linspace_f32(xlims[0], xlims[1], nbr_of_x_points as usize);
+                let y_vals_lin = Linspace::linspace_f32(ylims[0], ylims[1], nbr_of_y_points as usize);
+
+                for &val in x_vals_lin.iter() {
+                    let start = project(&camera_view, &[val, 0.0, -ylims[0]].into());
+                    let end = project(&camera_view, &[val, 0.0, -ylims[1]].into());
+                    let start_x_coord = find_point(start[0], &x_grid_window[0..]).1;
+                    let start_y_coord = find_point(start[1], &y_grid_window[0..]).1;
+                    let end_x_coord = find_point(end[0], &x_grid_window[0..]).1;
+                    let end_y_coord = find_point(end[1], &y_grid_window[0..]).1;
+                    grid_drawer.move_to(Point::new(start_x_coord, start_y_coord));
+                    grid_drawer.line_to(Point::new(end_x_coord, end_y_coord));
+
+                    let mut text = Text::from(format!("{:.0}", val));
+                    let start_text = project(&camera_view, &[val, 0.0, -ylims[0]+scale/4.0].into());
+                    let text_x_coord = find_point(start_text[0], &x_grid_window[0..]).1;
+                    let text_y_coord = find_point(start_text[1], &y_grid_window[0..]).1;
+                    text.position = Point::new(text_x_coord, text_y_coord);
+                    text.horizontal_alignment = HorizontalAlignment::Center;
+                    frame.fill_text(text);
+
+                }
+                for &val in y_vals_lin.iter() {
+                    let start = project(&camera_view, &[xlims[0], 0.0, -val].into());
+                    let end = project(&camera_view, &[xlims[1], 0.0, -val].into());
+                    let start_x_coord = find_point(start[0], &x_grid_window[0..]).1;
+                    let start_y_coord = find_point(start[1], &y_grid_window[0..]).1;
+                    let end_x_coord = find_point(end[0], &x_grid_window[0..]).1;
+                    let end_y_coord = find_point(end[1], &y_grid_window[0..]).1;
+                    grid_drawer.move_to(Point::new(start_x_coord, start_y_coord));
+                    grid_drawer.line_to(Point::new(end_x_coord, end_y_coord));
+
+                    let mut text = Text::from(format!("{:.0}", val));
+
+                    let start_text = project(&camera_view, &[xlims[0]-scale/4.0, 0.0, -val].into());
+                    let text_x_coord = find_point(start_text[0], &x_grid_window[0..]).1;
+                    let text_y_coord = find_point(start_text[1], &y_grid_window[0..]).1;
+
+                    text.position = Point::new(text_x_coord, text_y_coord);
+                    text.horizontal_alignment = HorizontalAlignment::Center;
+                    frame.fill_text(text);
+
+                }
+
+
+                frame.stroke(&grid_drawer.build(),Stroke{color: iced::Color::new(0.0,0.0,0.0,0.6),
+                width: 2.0, line_cap: LineCap::Butt
+                , line_join: LineJoin::Miter});
+
 
 
                 let x_axes_1 = project(&camera_view, &x_1.into());
@@ -243,7 +296,7 @@ impl<Message> canvas::Program<Message> for State {
                 frame.stroke(&axes_p, Stroke{color: Color::BLACK, width: 2.0, line_cap: LineCap::Butt
                 , line_join: LineJoin::Miter});
 
-                let mut grid_drawer = path::Builder::new();
+
                 
 
                 if let Some(s) = self.plot.get_surface() {
@@ -356,10 +409,10 @@ impl<Message> canvas::Program<Message> for State {
 //                }
 
 
-                let grid_p = grid_drawer.build();
+//                let grid_p = grid_drawer.build();
 
-                frame.stroke(&grid_p, Stroke{color: Color::BLACK, width: 2.0, line_cap: LineCap::Butt
-                , line_join: LineJoin::Miter});
+//                frame.stroke(&grid_p, Stroke{color: Color::BLACK, width: 2.0, line_cap: LineCap::Butt
+//                , line_join: LineJoin::Miter});
 
                 
 //                let mut vertex_points: Vec<Point> = Vec::with_capacity(self.vertices.ncols());

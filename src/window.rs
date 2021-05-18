@@ -190,7 +190,7 @@ impl<Message> canvas::Program<Message> for State {
             let mut y_grid = path::Builder::new();
             let grid = self.plot.get_axes();
             let nbr_of_x_points = (xlims[1]-xlims[0])/grid.get_axes().get_scale();
-            let nbr_of_y_points = nbr_of_x_points;
+            let nbr_of_y_points = (ylims[1]-ylims[0])/grid.get_axes().get_scale();
             let x_step = (frame.width()-(2*edge) as f32) as f64/nbr_of_x_points;
             let y_step = (frame.height()-(2*edge) as f32) as f64/nbr_of_y_points;
 
