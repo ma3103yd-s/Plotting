@@ -220,9 +220,35 @@ impl<Message> canvas::Program<Message> for State {
                 let nbr_of_z_points = (zlims[1]-zlims[0])/scale;
 
                 let mut grid_drawer = path::Builder::new();
+                let mut dash_drawer = path::Builder::new();
+                
 
                 let x_vals_lin = Linspace::linspace_f32(xlims[0], xlims[1], nbr_of_x_points as usize);
                 let y_vals_lin = Linspace::linspace_f32(ylims[0], ylims[1], nbr_of_y_points as usize);
+                let z_vals_lin = Linspace::linspace_f32(zlims[0], zlims[1], nbr_of_z_points as usize);
+                
+                for &val in z_vals_lin.iter() {
+                    let text_pos = project(&camera_view, &[xlim-scale/4.0, val, scale/4.0].into());
+                    let text_x_coord = find_point(text_pos[0], &x_grid_window[0..]).1;
+                    let text_y_coord = find_point(text_pos[1], &y_grid_window[0..]).1;
+
+                    let dash_line = project_line(&camera_view, &[0.0, val, scale/4.0].into(),
+                                                 &[0.0, val, -scale/4.0].into());
+
+                    let mut text = Text::from(format!("{:.0}", val));
+                    text.position = Point::new(text_x_coord, text_y_coord);
+                    text.horizontal_alignment = HorizontalAlignment::Center;
+                    frame.fill_text(text);
+                    
+                    let start_x = find_point(dash_line[0].0, &x_grid_window[0..]).1;
+                    let end_x = find_point(dash_line[1].0, &x_grid_window[0..]).1;
+                    let start_y = find_point(dash_line[0].1, &y_grid_window[0..]).1;
+                    let end_y = find_point(dash_line[1].1, &y_grid_window[0..]).1;
+
+                    dash_drawer.move_to(Point::new(start_x, start_y));
+                    dash_drawer.line_to(Point::new(end_x, end_y));
+
+                }
 
                 for &val in x_vals_lin.iter() {
                     let start = project(&camera_view, &[val, 0.0, -ylims[0]].into());
@@ -264,6 +290,11 @@ impl<Message> canvas::Program<Message> for State {
                     frame.fill_text(text);
 
                 }
+
+
+                frame.stroke(&dash_drawer.build(),Stroke{color: iced::Color::new(0.0,0.0,0.0,1.0),
+                width: 2.0, line_cap: LineCap::Butt
+                , line_join: LineJoin::Miter});
 
 
                 frame.stroke(&grid_drawer.build(),Stroke{color: iced::Color::new(0.0,0.0,0.0,0.6),

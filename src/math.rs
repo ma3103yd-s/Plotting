@@ -16,11 +16,17 @@ pub fn create_camera(pos: &Vector3<f32>, target: &Vector3<f32>) -> Matrix3<f32> 
 }
 
 pub fn project(camera: &Matrix3<f32>, point: &Vector3<f32>) -> [f32;2] {
-    let hpoint = point;
+    //let hpoint = point;
     let point_3d = camera*point;
     let point_2d = [point_3d[0], point_3d[2]];
     point_2d
     
+}
+
+pub fn project_line(camera: &Matrix3<f32>, point_1: &Vector3<f32>, point_2: &Vector3<f32>) -> [(f32, f32);2] {
+    let p1 = project(&camera, &point_1);
+    let p2 = project(&camera, &point_2);
+    [(p1[0], p1[1]), (p2[0], p2[1])]
 }
 
 // Todo. Implement method. Map points to a certain interval
