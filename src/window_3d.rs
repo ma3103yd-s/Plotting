@@ -176,9 +176,6 @@ impl<Message> canvas::Program<Message> for State {
                 let max_val: f32 = (xlims[1].max(ylims[1])).max(zlims[1]);
                 let min_val: f32 = (xlims[0].min(ylims[0])).min(zlims[0]);
 
-
-
-                let mut vertex_map: Vec<Vec<usize>> = Vec::with_capacity(self.vertices.ncols());
                 let y_1 = Vector3::new(0.0,0.0, -min_val);
                 let y_2 = Vector3::new(0.0, 0.0, -max_val);
                 let x_1 = Vector3::new(min_val, 0.0, 0.0);
@@ -187,18 +184,6 @@ impl<Message> canvas::Program<Message> for State {
                 let z_2 = Vector3::new(0.0, max_val, 0.0);
                 //let x_axes = Vector3::new(5.0, 0.0, 0.0);
                 //let z_axes = Vector3::new(0.0, 5.0, 0.0);
-
-
-
-
-                vertex_map.push(vec![1, 7, 3]);
-                vertex_map.push(vec![2, 6]);
-                vertex_map.push(vec![3, 5]);
-                vertex_map.push(vec![4]);
-                vertex_map.push(vec![5, 7]);
-                vertex_map.push(vec![6]);
-                vertex_map.push(vec![7]);
-                vertex_map.push(vec![7]);
 
                 let mut origin = Point::new(frame.width()*0.5, frame.height()*0.5);
                 // Create grid of points
@@ -217,7 +202,7 @@ impl<Message> canvas::Program<Message> for State {
                 let scale = axes_3d.get_scale();
                 let nbr_of_x_points = (xlims[1]-xlims[0])/scale;
                 let nbr_of_y_points = (ylims[1]-ylims[0])/scale;
-                let nbr_of_z_points = (zlims[1]-zlims[0])/scale;
+                let nbr_of_z_points = (zlims[1]-zlims[0])/(scale);
 
                 let mut grid_drawer = path::Builder::new();
                 let mut dash_drawer = path::Builder::new();
@@ -226,14 +211,117 @@ impl<Message> canvas::Program<Message> for State {
                 let x_vals_lin = Linspace::linspace_f32(xlims[0], xlims[1], nbr_of_x_points as usize);
                 let y_vals_lin = Linspace::linspace_f32(ylims[0], ylims[1], nbr_of_y_points as usize);
                 let z_vals_lin = Linspace::linspace_f32(zlims[0], zlims[1], nbr_of_z_points as usize);
+                let (_, _, phi) = cartesian_to_polar(&self.camera);
+
+                let mut start = xlims[1];
+                let mut end = xlims[0];
+
+                let mut sign = 1.0;
+                if(phi < PI && 0_f32<phi) {
+                    start = xlims[0];
+                    end = xlims[1];
+                    sign = -1.0;
+                }
                 
+
+                for &val in x_vals_lin.iter() {
+
+                    let dash_line = project_line(&camera_view,
+                                                     &[val, zlims[0], -ylims[0]+scale/4.0].into(),
+                                                     &[val, zlims[0], -ylims[0] - scale/4.0].into());
+
+                    let axis_end = project(&camera_view,
+                                           &[val, zlims[0], -ylims[1]].into());
+                    let start_x = find_point(dash_line[0].0, &x_grid_window[0..]).1;
+                    let end_x = find_point(dash_line[1].0, &x_grid_window[0..]).1;
+                    let start_y = find_point(dash_line[0].1, &y_grid_window[0..]).1;
+                    let end_y = find_point(dash_line[1].1, &y_grid_window[0..]).1;
+
+                    let axis_end_x = find_point(axis_end[0], &x_grid_window[0..]).1;
+                    let axis_end_y = find_point(axis_end[1], &y_grid_window[0..]).1;
+
+                    let axis_end_z = project(&camera_view,
+                                             &[val, zlims[1], -ylims[1]].into());
+                    let axis_end_z_x = find_point(axis_end_z[0], &x_grid_window[0..]).1;
+                    let axis_end_z_y = find_point(axis_end_z[1], &y_grid_window[0..]).1;
+
+
+
+                    grid_drawer.move_to(Point::new(end_x, end_y));
+                    grid_drawer.line_to(Point::new(axis_end_x, axis_end_y));
+
+                    dash_drawer.move_to(Point::new(start_x,start_y));
+                    dash_drawer.line_to(Point::new(end_x, end_y));
+                    grid_drawer.line_to(Point::new(axis_end_z_x, axis_end_z_y));
+
+                    let mut text = Text::from(format!("{:.0}", val));
+                    let start_text = project(&camera_view, &[val, zlims[0], -ylims[0]+scale].into());
+                    let text_x_coord = find_point(start_text[0], &x_grid_window[0..]).1;
+                    let text_y_coord = find_point(start_text[1], &y_grid_window[0..]).1;
+                    text.position = Point::new(text_x_coord, text_y_coord);
+                    text.horizontal_alignment = HorizontalAlignment::Center;
+                    frame.fill_text(text);
+
+                }
+                for &val in y_vals_lin.iter() {
+
+
+                    let dash_line = project_line(&camera_view,
+                                                     &[start+sign*scale/4.0, zlims[0], -val].into(),
+                                                     &[start-sign*scale/4.0, zlims[0], -val].into());
+
+                    let axis_end = project(&camera_view,
+                                           &[end, zlims[0], -val].into());
+                    let start_x = find_point(dash_line[0].0, &x_grid_window[0..]).1;
+                    let end_x = find_point(dash_line[1].0, &x_grid_window[0..]).1;
+                    let start_y = find_point(dash_line[0].1, &y_grid_window[0..]).1;
+                    let end_y = find_point(dash_line[1].1, &y_grid_window[0..]).1;
+
+                    let axis_end_x = find_point(axis_end[0], &x_grid_window[0..]).1;
+                    let axis_end_y = find_point(axis_end[1], &y_grid_window[0..]).1;
+                    let axis_end_z = project(&camera_view,
+                                             &[end, zlims[1], -val].into());
+                    let axis_end_z_x = find_point(axis_end_z[0], &x_grid_window[0..]).1;
+                    let axis_end_z_y = find_point(axis_end_z[1], &y_grid_window[0..]).1;
+
+                    grid_drawer.move_to(Point::new(end_x, end_y));
+                    grid_drawer.line_to(Point::new(axis_end_x, axis_end_y));
+                    grid_drawer.line_to(Point::new(axis_end_z_x, axis_end_z_y));
+
+                    dash_drawer.move_to(Point::new(start_x,start_y));
+                    dash_drawer.line_to(Point::new(end_x, end_y));
+
+                    let mut text = Text::from(format!("{:.0}", val));
+
+                    let start_text = project(&camera_view, &[start+sign*scale, zlims[0], -val].into());
+                    let text_x_coord = find_point(start_text[0], &x_grid_window[0..]).1;
+                    let text_y_coord = find_point(start_text[1], &y_grid_window[0..]).1;
+
+                    text.position = Point::new(text_x_coord, text_y_coord);
+                    text.horizontal_alignment = HorizontalAlignment::Center;
+                    frame.fill_text(text);
+
+                }
+
                 for &val in z_vals_lin.iter() {
-                    let text_pos = project(&camera_view, &[xlim-scale/4.0, val, scale/4.0].into());
+                    let grid_line_x_end = project(&camera_view, &[end, val, -ylims[1]].into());
+                    let grid_line_y_end = project(&camera_view,
+                                              &[end, val, -ylims[0]].into());
+                    let grid_line_y_coord_x = find_point(grid_line_y_end[0],
+                                                               &x_grid_window[0..]).1;
+                    let grid_line_y_coord_y = find_point(grid_line_y_end[1], &y_grid_window[0..]).1;
+
+
+
+                    let axis_end_x = find_point(grid_line_x_end[0], &x_grid_window[0..]).1;
+                    let axis_end_y = find_point(grid_line_x_end[1], &y_grid_window[0..]).1;
+
+                    let text_pos = project(&camera_view, &[start+sign*scale/2.0, val, -ylims[1]].into());
                     let text_x_coord = find_point(text_pos[0], &x_grid_window[0..]).1;
                     let text_y_coord = find_point(text_pos[1], &y_grid_window[0..]).1;
 
-                    let dash_line = project_line(&camera_view, &[0.0, val, scale/4.0].into(),
-                                                 &[0.0, val, -scale/4.0].into());
+                    let dash_line = project_line(&camera_view, &[start+sign*scale/4.0, val, -ylims[1]].into(),
+                                                 &[start-sign*scale/4.0, val, -ylims[1]].into());
 
                     let mut text = Text::from(format!("{:.0}", val));
                     text.position = Point::new(text_x_coord, text_y_coord);
@@ -248,49 +336,11 @@ impl<Message> canvas::Program<Message> for State {
                     dash_drawer.move_to(Point::new(start_x, start_y));
                     dash_drawer.line_to(Point::new(end_x, end_y));
 
-                }
-
-                for &val in x_vals_lin.iter() {
-                    let start = project(&camera_view, &[val, 0.0, -ylims[0]].into());
-                    let end = project(&camera_view, &[val, 0.0, -ylims[1]].into());
-                    let start_x_coord = find_point(start[0], &x_grid_window[0..]).1;
-                    let start_y_coord = find_point(start[1], &y_grid_window[0..]).1;
-                    let end_x_coord = find_point(end[0], &x_grid_window[0..]).1;
-                    let end_y_coord = find_point(end[1], &y_grid_window[0..]).1;
-                    grid_drawer.move_to(Point::new(start_x_coord, start_y_coord));
-                    grid_drawer.line_to(Point::new(end_x_coord, end_y_coord));
-
-                    let mut text = Text::from(format!("{:.0}", val));
-                    let start_text = project(&camera_view, &[val, 0.0, -ylims[0]+scale/4.0].into());
-                    let text_x_coord = find_point(start_text[0], &x_grid_window[0..]).1;
-                    let text_y_coord = find_point(start_text[1], &y_grid_window[0..]).1;
-                    text.position = Point::new(text_x_coord, text_y_coord);
-                    text.horizontal_alignment = HorizontalAlignment::Center;
-                    frame.fill_text(text);
+                    grid_drawer.move_to(Point::new(end_x, end_y));
+                    grid_drawer.line_to(Point::new(axis_end_x, axis_end_y));
+                    grid_drawer.line_to(Point::new(grid_line_y_coord_x, grid_line_y_coord_y));
 
                 }
-                for &val in y_vals_lin.iter() {
-                    let start = project(&camera_view, &[xlims[0], 0.0, -val].into());
-                    let end = project(&camera_view, &[xlims[1], 0.0, -val].into());
-                    let start_x_coord = find_point(start[0], &x_grid_window[0..]).1;
-                    let start_y_coord = find_point(start[1], &y_grid_window[0..]).1;
-                    let end_x_coord = find_point(end[0], &x_grid_window[0..]).1;
-                    let end_y_coord = find_point(end[1], &y_grid_window[0..]).1;
-                    grid_drawer.move_to(Point::new(start_x_coord, start_y_coord));
-                    grid_drawer.line_to(Point::new(end_x_coord, end_y_coord));
-
-                    let mut text = Text::from(format!("{:.0}", val));
-
-                    let start_text = project(&camera_view, &[xlims[0]-scale/4.0, 0.0, -val].into());
-                    let text_x_coord = find_point(start_text[0], &x_grid_window[0..]).1;
-                    let text_y_coord = find_point(start_text[1], &y_grid_window[0..]).1;
-
-                    text.position = Point::new(text_x_coord, text_y_coord);
-                    text.horizontal_alignment = HorizontalAlignment::Center;
-                    frame.fill_text(text);
-
-                }
-
 
                 frame.stroke(&dash_drawer.build(),Stroke{color: iced::Color::new(0.0,0.0,0.0,1.0),
                 width: 2.0, line_cap: LineCap::Butt
@@ -301,24 +351,26 @@ impl<Message> canvas::Program<Message> for State {
                 width: 2.0, line_cap: LineCap::Butt
                 , line_join: LineJoin::Miter});
 
+                let x_axes = project_line(&camera_view,
+                                          &[xlims[0], zlims[0], -ylims[0]].into(),
+                                          &[xlims[1], zlims[0], -ylims[0]].into());
+                let y_axes = project_line(&camera_view,
+                                          &[start, zlims[0], -ylims[0]].into(),
+                                          &[start, zlims[0], -ylims[1]].into());
+                let z_axes = project_line(&camera_view,
+                                          &[start, zlims[0], -ylims[1]].into(),
+                                          &[start, zlims[1], -ylims[1]].into());
 
 
-                let x_axes_1 = project(&camera_view, &x_1.into());
-                let x_axes_2 = project(&camera_view, &x_2.into());
-                let y_axes_1 = project(&camera_view, &y_1.into());
-                let y_axes_2 = project(&camera_view, &y_2.into());
-                let z_axes_1 = project(&camera_view, &z_1.into());
-                let z_axes_2 = project(&camera_view, &z_2.into());
+                let all_axes = [x_axes, y_axes, z_axes];
 
-                let all_axes = [(x_axes_1, x_axes_2), (y_axes_1, y_axes_2), (z_axes_1, z_axes_2)];
-
-                for pair in all_axes.iter() {
-                let x_1_coord = find_point(pair.0[0], &x_grid_window[0..]).1;
-                let y_1_coord = find_point(pair.0[1], &y_grid_window[0..]).1;
-                let x_2_coord = find_point(pair.1[0], &x_grid_window[0..]).1;
-                let y_2_coord = find_point(pair.1[1], &y_grid_window[0..]).1;
-                axes_drawer.move_to(Point::new(x_1_coord, y_1_coord));
-                axes_drawer.line_to(Point::new(x_2_coord, y_2_coord));
+                for &ax in all_axes.iter() {
+                let start_x = find_point(ax[0].0, &x_grid_window[0..]).1;
+                let end_x = find_point(ax[1].0, &x_grid_window[0..]).1;
+                let start_y = find_point(ax[0].1, &y_grid_window[0..]).1;
+                let end_y = find_point(ax[1].1, &y_grid_window[0..]).1;
+                axes_drawer.move_to(Point::new(start_x, start_y));
+                axes_drawer.line_to(Point::new(end_x, end_y));
                 }
 
 
