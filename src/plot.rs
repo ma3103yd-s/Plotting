@@ -293,6 +293,11 @@ impl Plot3D {
     pub fn get_axes(&self) -> &Grid3D {
         &self.axes
     }
+
+    pub fn scale(mut self, scale:f32) -> Self {
+        self.axes.scale(scale);
+        self
+    }
     pub fn get_surface(&self) -> &Option<Surface3D> {
         &self.surface
     }
@@ -414,6 +419,9 @@ impl Grid3D {
             axes,
             grid: grid.to_owned(),
         }
+    }
+    pub fn scale(&mut self, scale:f32) {
+        self.axes.scale(scale);
     }
 }
 
