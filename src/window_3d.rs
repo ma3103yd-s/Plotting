@@ -22,7 +22,7 @@ pub struct State {
     vertice_cache: canvas::Cache,
     plot: Plot3D,
     camera: Vector3<f32>,
-    vertices: MatrixMN<f32, U3,U8>,
+    angles: (f32, f32),
     camera_control: Camera,
 
 }
@@ -45,10 +45,8 @@ impl State {
         Self {
             vertice_cache: Default::default(),
             plot,
-            camera: Vector3::new(0.0, 5.0, 0.0),
-            vertices: MatrixMN::from_columns(&[Vector3::new(0.0,0.0,0.0), Vector3::new(0.0, 1.0, 0.0),
-            Vector3::new(1.0, 1.0, 0.0), Vector3::new(1.0, 0.0, 0.0), Vector3::new(1.0, 0.0, -1.0),
-            Vector3::new(1.0,1.0,-1.0),Vector3::new(0.0,1.0,-1.0),Vector3::new(0.0,0.0,-1.0)]),
+            camera: Vector3::new(0.0,0.0,10.0),
+            angles: (0.0, -90.0),
             camera_control: Camera::Released,
         }
     }
@@ -114,8 +112,7 @@ impl<Message> canvas::Program<Message> for State {
         bounds: Rectangle,
         cursor: Cursor,
         ) -> (event::Status, Option<Message>) {
-            let dphi = 0.001;
-            let dtheta = 0.001;
+            let sens = 0.1;
             let cursor_position =
                 if let Some(position) = cursor.position_in(&bounds) {
                     position
@@ -135,13 +132,23 @@ impl<Message> canvas::Program<Message> for State {
                             match self.camera_control {
                                 Camera::Pressed(x_c, y_c) => {
                                     let dx = x-x_c;
-                                    let dy = y-y_c;
+                                    let dy = y_c-y;
 
-                                    let (r, theta, phi) = cartesian_to_polar(&self.camera);
-                                    let phi_new = phi+dx*dphi;
-                                    let theta_new = theta-dy*dtheta;
+                                    self.angles.0 += sens*dy;
+                                    self.angles.1 +=sens*dx;
+                                    if(self.angles.0 > 89.0) {
+                                        self.angles.0 = 89.0;
+                                    }
+                                    if(self.angles.0 < -89.0) {
+                                        self.angles.0 = -89.0;
+                                    }
+                                    let dir_x = self.angles.1.to_radians().cos()
+                                        *self.angles.1.to_radians().cos();
+                                    let dir_y = self.angles.0.to_radians().sin();
+                                    let dir_z =  self.angles.1.to_radians().sin()
+                                        *self.angles.0.to_radians().cos();
                                     self.vertice_cache.clear();
-                                    self.camera = polar_to_cartesian(r,theta_new, phi_new);
+                                    self.camera = Vector3::new(dir_x, dir_y, dir_z).normalize();
                                     self.camera_control=Camera::Pressed(x,y);
 
                                 },
@@ -175,11 +182,11 @@ impl<Message> canvas::Program<Message> for State {
                 let zlims = self.plot.get_axes().get_axes().get_zaxes();
 
                 let max_val: f32 = (xlims[1].max(ylims[1])).max(zlims[1]);
-                let min_val: f32 = (xlims[0].min(ylims[0])).min(zlims[0]);
+                let min_val: f32 = -max_val;
 
                 let mut origin = Point::new(frame.width()*0.5, frame.height()*0.5);
                 // Create grid of points
-                let mut grid = Linspace::linspace_f32(2.0*min_val, 2.0*max_val, 1000);
+                let mut grid = Linspace::linspace_f32(min_val*1.1, max_val*1.1, 1000);
 
 
                 let mut x_grid_window = map_points_f32(&grid, (frame.width()*0.1, frame.width()*0.9));
@@ -238,28 +245,33 @@ impl<Message> canvas::Program<Message> for State {
                     text.horizontal_alignment = HorizontalAlignment::Center;
                     frame.fill_text(text);
 
-                    let dash_line = project_line(&camera_view,
-                                                &[x_vals_lin[i+1], zlims[0], -ylims[0]+scale/4.0].into(),
-                                               &[x_vals_lin[i+1], zlims[0], -ylims[0] - scale/4.0].into());
+                    if(i==x_vals_lin.len()-2) {
+                        
+                        let dash_line = project_line(&camera_view,
+                                                    &[x_vals_lin[i+1], zlims[0], -ylims[0]+scale/4.0].into(),
+                                                   &[x_vals_lin[i+1], zlims[0], -ylims[0] - scale/4.0].into());
 
-                    let start_x = find_point(dash_line[0].0, &x_grid_window[0..]).1;
-                    let end_x = find_point(dash_line[1].0, &x_grid_window[0..]).1;
-                    let start_y = find_point(dash_line[0].1, &y_grid_window[0..]).1;
-                    let end_y = find_point(dash_line[1].1, &y_grid_window[0..]).1;
+                        let start_x = find_point(dash_line[0].0, &x_grid_window[0..]).1;
+                        let end_x = find_point(dash_line[1].0, &x_grid_window[0..]).1;
+                        let start_y = find_point(dash_line[0].1, &y_grid_window[0..]).1;
+                        let end_y = find_point(dash_line[1].1, &y_grid_window[0..]).1;
 
 
 
-                    dash_drawer.move_to(Point::new(start_x,start_y));
-                    dash_drawer.line_to(Point::new(end_x, end_y));
-                                                                                                      
-                    let mut text = Text::from(format!("{:.0}", x_vals_lin[i+1]));
-                    let start_text = project(&camera_view,
-                                             &[x_vals_lin[i+1], zlims[0], -ylims[0]+scale].into());
-                    let text_x_coord = find_point(start_text[0], &x_grid_window[0..]).1;
-                    let text_y_coord = find_point(start_text[1], &y_grid_window[0..]).1;
-                    text.position = Point::new(text_x_coord, text_y_coord);
-                    text.horizontal_alignment = HorizontalAlignment::Center;
-                    frame.fill_text(text);
+                        dash_drawer.move_to(Point::new(start_x,start_y));
+                        dash_drawer.line_to(Point::new(end_x, end_y));
+                                                                                                          
+                        let mut text = Text::from(format!("{:.0}", x_vals_lin[i+1]));
+                        let start_text = project(&camera_view,
+                                                 &[x_vals_lin[i+1], zlims[0], -ylims[0]+scale].into());
+                        let text_x_coord = find_point(start_text[0], &x_grid_window[0..]).1;
+                        let text_y_coord = find_point(start_text[1], &y_grid_window[0..]).1;
+                        text.position = Point::new(text_x_coord, text_y_coord);
+                        text.horizontal_alignment = HorizontalAlignment::Center;
+                        frame.fill_text(text);
+
+
+                    }
 
                     for j in 0..y_vals_lin.len()-1 {
                         let p1 = project(&camera_view,
@@ -343,35 +355,41 @@ impl<Message> canvas::Program<Message> for State {
 
                     dash_drawer.move_to(Point::new(start_x, start_y));
                     dash_drawer.line_to(Point::new(end_x, end_y));
-                    let dash_line = project_line(&camera_view,
-                                                 &[start+sign*scale/4.0, z_vals_lin[i+1], -ylims[1]].into(),
-                                                 &[start-sign*scale/4.0, z_vals_lin[i+1], -ylims[1]].into());
-                    let text_pos = project(&camera_view,
-                                           &[start+sign*scale/2.0, z_vals_lin[i+1], -ylims[1]].into());
-                    let text_x_coord = find_point(text_pos[0], &x_grid_window[0..]).1;
-                    let text_y_coord = find_point(text_pos[1], &y_grid_window[0..]).1;
-                    let mut text = Text::from(format!("{:.0}", z_vals_lin[i+1]));
-                    text.position = Point::new(text_x_coord, text_y_coord);
-                    text.horizontal_alignment = HorizontalAlignment::Center;
-                    frame.fill_text(text);
+                    if(i==z_vals_lin.len()-2) {
                     
-                    let start_x = find_point(dash_line[0].0, &x_grid_window[0..]).1;
-                    let end_x = find_point(dash_line[1].0, &x_grid_window[0..]).1;
-                    let start_y = find_point(dash_line[0].1, &y_grid_window[0..]).1;
-                    let end_y = find_point(dash_line[1].1, &y_grid_window[0..]).1;
+                        let dash_line = project_line(&camera_view,
+                                                     &[start+sign*scale/4.0, z_vals_lin[i+1], -ylims[1]]
+                                                     .into(),
+                                                     &[start-sign*scale/4.0, z_vals_lin[i+1], -ylims[1]]
+                                                     .into());
+                        let text_pos = project(&camera_view,
+                                               &[start+sign*scale/2.0, z_vals_lin[i+1], -ylims[1]].into());
+                        let text_x_coord = find_point(text_pos[0], &x_grid_window[0..]).1;
+                        let text_y_coord = find_point(text_pos[1], &y_grid_window[0..]).1;
+                        let mut text = Text::from(format!("{:.0}", z_vals_lin[i+1]));
+                        text.position = Point::new(text_x_coord, text_y_coord);
+                        text.horizontal_alignment = HorizontalAlignment::Center;
+                        frame.fill_text(text);
+                        
+                        let start_x = find_point(dash_line[0].0, &x_grid_window[0..]).1;
+                        let end_x = find_point(dash_line[1].0, &x_grid_window[0..]).1;
+                        let start_y = find_point(dash_line[0].1, &y_grid_window[0..]).1;
+                        let end_y = find_point(dash_line[1].1, &y_grid_window[0..]).1;
 
-                    dash_drawer.move_to(Point::new(start_x, start_y));
-                    dash_drawer.line_to(Point::new(end_x, end_y));
+                        dash_drawer.move_to(Point::new(start_x, start_y));
+                        dash_drawer.line_to(Point::new(end_x, end_y));
+                    }
+
 
                     for j in 0..y_vals_lin.len()-1 {
                         let p1 = project(&camera_view,
                                          &[xlims[1], z_vals_lin[i], -y_vals_lin[j]].into());
                         let p2 = project(&camera_view,
-                                         &[xlims[1], z_vals_lin[i+1], -y_vals_lin[j]].into());
+                                         &[xlims[1], z_vals_lin[i], -y_vals_lin[j+1]].into());
                         let p3 = project(&camera_view,
                                          &[xlims[1], z_vals_lin[i+1], -y_vals_lin[j+1]].into());
                         let p4 = project(&camera_view,
-                                         &[xlims[1], z_vals_lin[i], -y_vals_lin[j+1]].into());
+                                         &[xlims[1], z_vals_lin[i+1], -y_vals_lin[j]].into());
                         let p1_coord_x = find_point(p1[0], &x_grid_window[0..]).1;
                         let p1_coord_y = find_point(p1[1], &y_grid_window[0..]).1;
 
@@ -415,6 +433,7 @@ impl<Message> canvas::Program<Message> for State {
                     text.position = Point::new(text_x_coord, text_y_coord);
                     text.horizontal_alignment = HorizontalAlignment::Center;
                     frame.fill_text(text);
+
                 }
 
 
@@ -424,7 +443,7 @@ impl<Message> canvas::Program<Message> for State {
 
                 
                 let rect_grid_p = grid_rectangle.build();
-                frame.fill(&rect_grid_p, iced::Color::new(0.99,0.99,0.99,1.0));
+                frame.fill(&rect_grid_p, iced::Color::new(0.9,0.9,0.9,1.0));
                 frame.stroke(&rect_grid_p, Stroke {color: iced::Color::new(0.4, 0.4, 0.4, 1.0),
                 width: 2.0, line_cap: LineCap::Butt, line_join: LineJoin::Miter});
 
@@ -507,11 +526,11 @@ impl<Message> canvas::Program<Message> for State {
                                 let b = c.0[color_index].2;
                                 //println!("r,g,b is {},{},{}", r,g,b);
                                 //println!("color index is {}", color_index);
-                                iced::Color::new(r,g,b,0.9)                             
+                                iced::Color::new(r,g,b,1.0)                             
                             } else {
                                 if let Some(c2) = s.get_color() {
                                     iced::Color::new(c2.0, c2.1, c2.2, c2.3)
-                                } else { iced::Color::new(0.0, 0.0, 1.0, 0.9)}
+                                } else { iced::Color::new(0.0, 0.0, 1.0, 1.0)}
                             };
 
                             //println!("color is {:?}", color);

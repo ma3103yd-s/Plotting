@@ -27,14 +27,14 @@ pub fn main() -> iced::Result {
     //
     //
     let x = Linspace::linspace_f32(-1.0, 1.0, 20);
-    let y = Linspace::linspace_f32(-1.0, 1.0, 20);
+    let y = Linspace::linspace_f32(-2.0, 2.0, 20);
     let (X, Y) = meshgrid(&x,&y);
     let Z = X.component_mul(&X)+Y.component_mul(&Y);
     //let Z = X.map(|x| x.sin())+Y.map(|y| y.cos());
     //println!("Z is {}", Z);
     
     let s = Surface3D::new(X,Y,Z);
-    let plot = Plot3D::plot(s).colormap("hot").scale(0.5);
+    let plot = Plot3D::plot(s).colormap("hot").scale(1.0);
 
     //Plot3D::show(plot)
 
