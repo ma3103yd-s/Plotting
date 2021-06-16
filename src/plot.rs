@@ -6,6 +6,7 @@ use iced::Settings;
 use iced::window;
 use iced::Application;
 use nalgebra::base::{Matrix, DMatrix};
+use std::thread;
 
 
 
@@ -75,7 +76,7 @@ pub fn double_max<T: Into<(f64, f64)>+Copy>(vals: &[T]) -> (f64,f64) {
 pub struct Axes2D {
     xlim: [f64;2],
     ylim: [f64;2],
-    scale: f64
+    spacing: f64
 }
 
 impl Axes2D {
@@ -83,7 +84,7 @@ impl Axes2D {
         Self {
             xlim: [0.0, 1.0],
             ylim: [0.0, 1.0],
-            scale: 1.0,
+            spacing: 1.0,
         }
     }
 
@@ -98,11 +99,11 @@ impl Axes2D {
         self.ylim = ylim.to_owned();
         self
     }
-    pub fn scale(&mut self, scale: f64) {
-        self.scale=scale
+    pub fn spacing(&mut self, spacing: f64) {
+        self.spacing=spacing
     }
-    pub fn get_scale(&self) -> f64 {
-        self.scale
+    pub fn get_spacing(&self) -> f64 {
+        self.spacing
         
     }
 }
@@ -121,7 +122,7 @@ pub struct Axes3D {
     xlim: [f32;2],
     ylim: [f32;2],
     zlim: [f32;2],
-    scale: f32,
+    spacing: f32,
     
 }
 
@@ -131,7 +132,7 @@ impl Axes3D {
             xlim: [0.0, 1.0],
             ylim: [0.0, 1.0],
             zlim: [0.0, 1.0],
-            scale: 1.0,
+            spacing: 1.0,
         }
     }
     pub fn get_xaxes(&self) -> [f32;2] {
@@ -143,12 +144,12 @@ impl Axes3D {
     pub fn get_zaxes(&self) -> [f32;2] {
        self.zlim 
     }
-    pub fn scale(&mut self, scale: f32) {
-        self.scale = scale;
+    pub fn spacing(&mut self, spacing: f32) {
+        self.spacing = spacing;
         
     }
-    pub fn get_scale(&self) -> f32 {
-        self.scale
+    pub fn get_spacing(&self) -> f32 {
+        self.spacing
     }
     pub fn axes(mut self, xlim: &[f32;2], ylim: &[f32;2], zlim: &[f32;2]) -> Self {
         self.xlim = xlim.to_owned();
@@ -294,12 +295,55 @@ impl Plot3D {
         &self.axes
     }
 
-    pub fn scale(mut self, scale:f32) -> Self {
-        self.axes.scale(scale);
+    pub fn spacing(mut self, spacing:f32) -> Self {
+        self.axes.spacing(spacing);
         self
     }
     pub fn get_surface(&self) -> &Option<Surface3D> {
         &self.surface
+    }
+    pub fn get_xlabel(&self) -> &str {
+        &self.xlabel
+    }
+    pub fn get_ylabel(&self) -> &str {
+        &self.ylabel
+    }
+    pub fn get_zlabel(&self) -> &str {
+        &self.zlabel
+    }
+    pub fn xlabel(mut self, xlabel: &str) -> Self {
+        self.xlabel = xlabel.to_owned();
+        self
+    }
+    pub fn ylabel(mut self, ylabel: &str) -> Self {
+        self.ylabel = ylabel.to_owned();
+        self
+    }
+    pub fn zlabel(mut self, zlabel: &str) -> Self {
+        self.zlabel = zlabel.to_owned();
+        self
+        
+    }
+    pub fn title(mut self, title: &str) -> Self {
+        self.title = title.to_owned();
+        self
+    }
+
+    pub fn get_title(&self) -> &str {
+        &self.title
+    }
+    pub fn show(self) {
+
+        Window3D::run(Settings{
+            window: window::Settings::default(),
+            flags: self,
+            default_font: None,
+            default_text_size: 20,
+            antialiasing: true,
+        }).unwrap();        
+
+
+        
     }
 
 //    pub fn show(plot: Plot3D<'static>) -> iced::Result {
@@ -353,14 +397,15 @@ impl Plot2D {
         }
     }
 
-    pub fn show(self) -> iced::Result {
+    pub fn show(self) {
         Window::run(Settings{
-            window: window::Settings::default(),
-            flags: self,
-            default_font: None,
-            default_text_size: 20,
-            antialiasing: true,
-        })
+        window: window::Settings::default(),
+        flags: self,
+        default_font: None,
+        default_text_size: 20,
+        antialiasing: true,
+        }).unwrap();
+        
     }
 
     pub fn grid(mut self, grid: &str) -> Self {
@@ -389,7 +434,7 @@ impl Plot2D {
 impl Grid {
     pub fn default() -> Self {
         Self {
-            axes: Axes2D{xlim: [0.0, 1.0], ylim: [0.0, 1.0], scale: 1.0},
+            axes: Axes2D{xlim: [0.0, 1.0], ylim: [0.0, 1.0], spacing: 1.0},
             grid: String::from("none"),
         }
     }
@@ -407,8 +452,8 @@ impl Grid {
 impl Grid3D {
     pub fn default() -> Self {
         Self {
-            axes: Axes3D{xlim: [0.0, 1.0], ylim: [0.0, 1.0], zlim: [0.0, 1.0], scale: 1.0},
-            grid: String::from("none"),
+            axes: Axes3D{xlim: [0.0, 1.0], ylim: [0.0, 1.0], zlim: [0.0, 1.0], spacing: 1.0},
+            grid: String::from("both"),
         }
     }
     pub fn get_axes(&self) -> &Axes3D {
@@ -420,8 +465,8 @@ impl Grid3D {
             grid: grid.to_owned(),
         }
     }
-    pub fn scale(&mut self, scale:f32) {
-        self.axes.scale(scale);
+    pub fn spacing(&mut self, spacing:f32) {
+        self.axes.spacing= spacing;
     }
 }
 
@@ -498,6 +543,12 @@ impl From<(&Vec<f64>, &Vec<f64>)> for Line2D {
         Line2D::new(vals.0, vals.1)
     }
 
+}
+
+impl From<(DMatrix<f32>, DMatrix<f32>, DMatrix<f32>)> for Surface3D {
+    fn from(vals: (DMatrix<f32>,DMatrix<f32>, DMatrix<f32>)) -> Self {
+        Surface3D::new(vals.0, vals.1, vals.2)
+    }
 }
 
 pub struct Linspace<T> {

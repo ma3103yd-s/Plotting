@@ -189,8 +189,8 @@ impl<Message> canvas::Program<Message> for State {
             let mut x_grid = path::Builder::new();
             let mut y_grid = path::Builder::new();
             let grid = self.plot.get_axes();
-            let nbr_of_x_points = (xlims[1]-xlims[0])/grid.get_axes().get_scale();
-            let nbr_of_y_points = (ylims[1]-ylims[0])/grid.get_axes().get_scale();
+            let nbr_of_x_points = (xlims[1]-xlims[0])/grid.get_axes().get_spacing();
+            let nbr_of_y_points = (ylims[1]-ylims[0])/grid.get_axes().get_spacing();
             let x_step = (frame.width()-(2*edge) as f32) as f64/nbr_of_x_points;
             let y_step = (frame.height()-(2*edge) as f32) as f64/nbr_of_y_points;
 
@@ -212,7 +212,7 @@ impl<Message> canvas::Program<Message> for State {
                         x_grid.move_to(Point::new(x_pos,y_origin-3.0));
                         x_grid.line_to(Point::new(x_pos, y_origin+3.0));
                         x_pos+=x_step as f32;
-                        x_text_val += grid.get_axes().get_scale();
+                        x_text_val += grid.get_axes().get_spacing();
                         x_text = Text::from(format!("{:.0}", x_text_val));
                         x_text.position = Point::new(x_pos, y_origin+5.0);
                         x_text.horizontal_alignment = HorizontalAlignment::Center;
