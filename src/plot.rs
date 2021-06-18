@@ -76,7 +76,7 @@ pub fn double_max<T: Into<(f64, f64)>+Copy>(vals: &[T]) -> (f64,f64) {
 pub struct Axes2D {
     xlim: [f64;2],
     ylim: [f64;2],
-    spacing: f64
+    nvalues: usize,
 }
 
 impl Axes2D {
@@ -84,7 +84,7 @@ impl Axes2D {
         Self {
             xlim: [0.0, 1.0],
             ylim: [0.0, 1.0],
-            spacing: 1.0,
+            nvalues: 10,
         }
     }
 
@@ -99,11 +99,11 @@ impl Axes2D {
         self.ylim = ylim.to_owned();
         self
     }
-    pub fn spacing(&mut self, spacing: f64) {
-        self.spacing=spacing
+    pub fn nvalues(&mut self, nvalues: usize) {
+        self.nvalues = nvalues;
     }
-    pub fn get_spacing(&self) -> f64 {
-        self.spacing
+    pub fn get_nvalues(&self) -> usize {
+        self.nvalues
         
     }
 }
@@ -122,7 +122,9 @@ pub struct Axes3D {
     xlim: [f32;2],
     ylim: [f32;2],
     zlim: [f32;2],
-    spacing: f32,
+    x_spacing: f32,
+    y_spacing: f32,
+    z_spacing: f32
     
 }
 
@@ -132,7 +134,9 @@ impl Axes3D {
             xlim: [0.0, 1.0],
             ylim: [0.0, 1.0],
             zlim: [0.0, 1.0],
-            spacing: 1.0,
+            x_spacing: 1.0,
+            y_spacing: 1.0,
+            z_spacing: 1.0,
         }
     }
     pub fn get_xaxes(&self) -> [f32;2] {
@@ -144,12 +148,14 @@ impl Axes3D {
     pub fn get_zaxes(&self) -> [f32;2] {
        self.zlim 
     }
-    pub fn spacing(&mut self, spacing: f32) {
-        self.spacing = spacing;
-        
+    pub fn get_xspacing(&self) -> f32 {
+        self.x_spacing
     }
-    pub fn get_spacing(&self) -> f32 {
-        self.spacing
+    pub fn get_yspacing(&self) -> f32 {
+        self.y_spacing
+    }
+    pub fn get_zspacing(&self) -> f32 {
+        self.z_spacing
     }
     pub fn axes(mut self, xlim: &[f32;2], ylim: &[f32;2], zlim: &[f32;2]) -> Self {
         self.xlim = xlim.to_owned();
@@ -296,8 +302,24 @@ impl Plot3D {
     }
 
     pub fn spacing(mut self, spacing:f32) -> Self {
-        self.axes.spacing(spacing);
+        self.axes.axes.x_spacing = spacing;
+        self.axes.axes.y_spacing = spacing;
+        self.axes.axes.z_spacing = spacing;
         self
+    }
+    pub fn zspacing(mut self, zspacing: f32) -> Self {
+        self.axes.axes.z_spacing = zspacing;
+        self
+        
+    }
+    pub fn yspacing(mut self, yspacing: f32) -> Self {
+        self.axes.axes.y_spacing = yspacing;
+        self
+    }
+    pub fn xspacing(mut self, xspacing: f32) -> Self {
+        self.axes.axes.x_spacing = xspacing;
+        self
+        
     }
     pub fn get_surface(&self) -> &Option<Surface3D> {
         &self.surface
@@ -434,7 +456,7 @@ impl Plot2D {
 impl Grid {
     pub fn default() -> Self {
         Self {
-            axes: Axes2D{xlim: [0.0, 1.0], ylim: [0.0, 1.0], spacing: 1.0},
+            axes: Axes2D{xlim: [0.0, 1.0], ylim: [0.0, 1.0], nvalues: 10},
             grid: String::from("none"),
         }
     }
@@ -452,7 +474,8 @@ impl Grid {
 impl Grid3D {
     pub fn default() -> Self {
         Self {
-            axes: Axes3D{xlim: [0.0, 1.0], ylim: [0.0, 1.0], zlim: [0.0, 1.0], spacing: 1.0},
+            axes: Axes3D{xlim: [0.0, 1.0], ylim: [0.0, 1.0], zlim: [0.0, 1.0], x_spacing: 1.0,
+            y_spacing: 1.0, z_spacing: 1.0},
             grid: String::from("both"),
         }
     }
@@ -464,9 +487,6 @@ impl Grid3D {
             axes,
             grid: grid.to_owned(),
         }
-    }
-    pub fn spacing(&mut self, spacing:f32) {
-        self.axes.spacing= spacing;
     }
 }
 

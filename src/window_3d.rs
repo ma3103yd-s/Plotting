@@ -240,17 +240,21 @@ impl<Message> canvas::Program<Message> for State {
                 // Draw the axes
                 let mut axes_drawer = path::Builder::new();
                 let axes_3d = self.plot.get_axes().get_axes();
-                let spacing = axes_3d.get_spacing();
-                let nbr_of_x_points = (xlims[1]-xlims[0])/spacing;
-                let nbr_of_y_points = (ylims[1]-ylims[0])/spacing;
-                let nbr_of_z_points = (zlims[1]-zlims[0])/(spacing);
+                let x_spacing = axes_3d.get_xspacing();
+                let y_spacing = axes_3d.get_yspacing();
+                let z_spacing = axes_3d.get_zspacing();
+                let nbr_of_z_values = ((zlims[1]-zlims[0])/(z_spacing)) as usize;
+                let nbr_of_x_values = ((xlims[1]-xlims[0])/(x_spacing)) as usize;
+                let nbr_of_y_values = ((ylims[1]-ylims[0])/(y_spacing)) as usize;
+
+                let spacing = (x_spacing.max(y_spacing)).max(z_spacing);
                 // Create a drawer for the axes dashes
                 let mut dash_drawer = path::Builder::new();
                 
                 // Generate an array of values for the axes
-                let x_vals_lin = Linspace::linspace_f32(xlims[0], xlims[1], nbr_of_x_points as usize);
-                let y_vals_lin = Linspace::linspace_f32(ylims[0], ylims[1], nbr_of_y_points as usize);
-                let z_vals_lin = Linspace::linspace_f32(zlims[0], zlims[1], nbr_of_z_points as usize);
+                let x_vals_lin = Linspace::linspace_f32(xlims[0], xlims[1], nbr_of_x_values);
+                let y_vals_lin = Linspace::linspace_f32(ylims[0], ylims[1], nbr_of_y_values);
+                let z_vals_lin = Linspace::linspace_f32(zlims[0], zlims[1], nbr_of_z_values);
                 
                 // Set locations for where the axes are drawn.
                 let mut ystart = xlims[0];
@@ -275,17 +279,36 @@ impl<Message> canvas::Program<Message> for State {
                 let mut grid_rectangle = path::Builder::new();
                 
                 // Determine number of decimals to present on axes
-                let mut nbr_of_digits = 0;
+                let mut nbr_of_x_digits = 0;
+                let mut nbr_of_y_digits = 0;
+                let mut nbr_of_z_digits = 0;
                 for i in 0..std::f32::DIGITS {
-                    let temp = spacing.fract()*(10.0_f32.powi(i as i32));
-                    let diff = temp.fract();
-                    println!("diff is {}", diff);
-                    if(diff < std::f32::EPSILON) {
+                    let temp_x = x_spacing.fract()*(10.0_f32.powi(i as i32));
+                    let diff_x = temp_x.fract();
+
+                    if(diff_x < std::f32::EPSILON) {
+                        break;
+                    }
+                    nbr_of_x_digits +=1;
+                }
+                for i in 0..std::f32::DIGITS {
+                    let temp_y = y_spacing.fract()*(10.0_f32.powi(i as i32));
+                    let diff_y = temp_y.fract();
+                    if(diff_y < std::f32::EPSILON) {
+                        break;
+                    }
+                    nbr_of_y_digits +=1;
+                }
+                for i in 0..std::f32::DIGITS {
+                    let temp_z = z_spacing.fract()*(10.0_f32.powi(i as i32));
+                    let diff_z = temp_z.fract();
+                    if(diff_z < std::f32::EPSILON) {
 
                         break;
                     }
-                    nbr_of_digits +=1;
+                    nbr_of_z_digits +=1;
                 }
+                println!("number of z_digits are {}", nbr_of_z_digits);
 
                 // Draw the x axes dashes,texts and xy, xz grid.
                 for i in 0..x_vals_lin.len()-1 {
@@ -304,7 +327,8 @@ impl<Message> canvas::Program<Message> for State {
                     dash_drawer.move_to(Point::new(start_x,start_y));
                     dash_drawer.line_to(Point::new(end_x, end_y));
                     // Generate coordinates for the axes texts                             
-                    let mut text = Text::from(format!("{:.ndigits$}", x_vals_lin[i], ndigits = nbr_of_digits));
+                    let mut text = Text::from(format!("{:.ndigits$}", x_vals_lin[i],
+                                                      ndigits = nbr_of_x_digits));
                     let start_text = project(&camera_view, &[x_vals_lin[i], zlims[0], -xstart+sign*spacing/2.0]
                                              .into());
                     let text_x_coord = find_point(start_text[0], &x_grid_window[0..]).1;
@@ -332,7 +356,7 @@ impl<Message> canvas::Program<Message> for State {
                         dash_drawer.line_to(Point::new(end_x, end_y));
                                                                                                           
                         let mut text = Text::from(format!("{:.ndigits$}", x_vals_lin[i+1],
-                                                          ndigits = nbr_of_digits));
+                                                          ndigits = nbr_of_x_digits));
                         let start_text = project(&camera_view,
                                                  &[x_vals_lin[i+1], zlims[0], -xstart+sign*spacing/2.0].into());
                         let text_x_coord = find_point(start_text[0], &x_grid_window[0..]).1;
@@ -416,7 +440,8 @@ impl<Message> canvas::Program<Message> for State {
                                            &[zxstart, z_vals_lin[i], -zstart-sign*spacing*0.5].into());
                     let text_x_coord = find_point(text_pos[0], &x_grid_window[0..]).1;
                     let text_y_coord = find_point(text_pos[1], &y_grid_window[0..]).1;
-                    let mut text = Text::from(format!("{:.ndigits$}", z_vals_lin[i], ndigits = nbr_of_digits));
+                    let mut text = Text::from(format!("{:.ndigits$}", z_vals_lin[i],
+                                                      ndigits = nbr_of_z_digits));
                     text.position = Point::new(text_x_coord, text_y_coord);
                     text.horizontal_alignment = HorizontalAlignment::Left;
                     frame.fill_text(text);
@@ -440,7 +465,7 @@ impl<Message> canvas::Program<Message> for State {
                         let text_x_coord = find_point(text_pos[0], &x_grid_window[0..]).1;
                         let text_y_coord = find_point(text_pos[1], &y_grid_window[0..]).1;
                         let mut text = Text::from(format!("{:.ndigits$}", z_vals_lin[i+1],
-                                                          ndigits = nbr_of_digits));
+                                                          ndigits = nbr_of_z_digits));
                         text.position = Point::new(text_x_coord, text_y_coord);
                         text.horizontal_alignment = HorizontalAlignment::Left;
                         frame.fill_text(text);
@@ -499,7 +524,7 @@ impl<Message> canvas::Program<Message> for State {
                     dash_drawer.move_to(Point::new(start_x,start_y));
                     dash_drawer.line_to(Point::new(end_x, end_y));
                                                                                                         
-                    let mut text = Text::from(format!("{:.ndigits$}", val, ndigits = nbr_of_digits));
+                    let mut text = Text::from(format!("{:.ndigits$}", val, ndigits = nbr_of_y_digits));
                                                                                                         
                     let start_text = project(&camera_view, &[ystart-spacing*0.5, zlims[0], -val].into());
                     let text_x_coord = find_point(start_text[0], &x_grid_window[0..]).1;
